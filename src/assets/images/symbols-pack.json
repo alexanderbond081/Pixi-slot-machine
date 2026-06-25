@@ -1,0 +1,11 @@
+{
+	"frames": {
+	  "symbol1": { "frame": { "x": 0, "y": 0, "w": 200, "h": 200 } },
+	  "symbol2": { "frame": { "x": 200, "y": 0, "w": 200, "h": 200 } },
+	  "symbol3": { "frame": { "x": 400, "y": 0, "w": 200, "h": 200 } }
+	},
+	"meta": {
+	  "image": "symbols-pack.png",
+	  "scale": "1"
+	}
+  }

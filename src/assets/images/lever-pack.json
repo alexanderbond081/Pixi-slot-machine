@@ -1,0 +1,17 @@
+{
+	"frames": {
+	  "lever0": { "frame": { "x": 0, "y": 0, "w": 129, "h": 340 } },
+	  "lever1": { "frame": { "x": 130, "y": 0, "w": 129, "h": 340 } },
+	  "lever2": { "frame": { "x": 260, "y": 0, "w": 129, "h": 340 } },
+	  "lever3": { "frame": { "x": 390, "y": 0, "w": 129, "h": 340 } }
+	},
+	"animations": {
+		"idle": ["lever0"],
+		"pull": ["lever0", "lever1", "lever2", "lever3", "lever3", "lever2", "lever1", "lever0"],
+		"blocked": ["lever0", "lever1", "lever0", "lever1", "lever0", "lever1", "lever0"]
+	},
+	"meta": {
+	  "image": "lever-pack.png",
+	  "scale": "1"
+	}
+  }

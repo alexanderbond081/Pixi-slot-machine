@@ -1,0 +1,105 @@
+{
+	"bundles": [
+		{
+			"name": "preload",
+			"assets": [
+				{
+					"alias": "logo",
+					"src": "assets/preload/random-logo.svg",
+					"data": {
+						"resolution": 8
+					}
+				},
+				{
+					"alias": "title",
+					"src": "assets/preload/random-title.png"
+				}
+			]
+		},
+		{
+			"name": "common",
+			"assets": []
+		},
+		{
+			"name": "main-scene",
+			"assets": [
+				{
+					"alias": "background",
+					"src": "assets/backgrounds/town-background1.png"
+				},
+				{
+					"alias": "firefly",
+					"src": "assets/images/firefly.png"
+				},
+				{
+					"alias": "reels-frame",
+					"src": "assets/images/reels-frame-no-lever.png"
+				},
+				{
+					"alias": "lever-pack",
+					"src": "assets/images/lever-pack.json"
+				},
+				{
+					"alias": "symbols",
+					"src": "assets/images/symbols-pack.json"
+				},
+				{
+					"alias": "coin-data",
+					"src": "assets/spine/coin/export/coin-pro.json"
+				},
+				{
+					"alias": "coin-atlas",
+					"src": "assets/spine/coin/export/coin.atlas"
+				},
+				{
+					"alias": "owl-data",
+					"src": "assets/spine/owl/export/owl-pro.json"
+				},
+				{
+					"alias": "owl-atlas",
+					"src": "assets/spine/owl/export/owl.atlas"
+				},
+				{
+					"alias": "sound-button-brown",
+					"src": "assets/images/sound-button-brown.json"
+				},
+				{
+					"alias": "bg-music-fantasy",
+					"src": "assets/sounds/deuslower-fantasy-medieval-ambient.mp3"
+				},
+				{
+					"alias": "bg-music-medieval",
+					"src": "assets/sounds/medieval_horizons-medieval-horizons.mp3"
+				},
+				{
+					"alias": "ambience",
+					"src": "assets/sounds/eryliaa-evening-crickets-and-birds-with-cuckoo.mp3"
+				},
+				{
+					"alias": "lever-sfx",
+					"src": "assets/sounds/Casino-game-mechanical-lever-pull.mp3"
+				},
+				{
+					"alias": "reel-spin",
+					"src": "assets/sounds/alex_jauk-air-vent-ambience-noise-short.mp3"
+				},
+				{
+					"alias": "slot-in",
+					"src": "assets/sounds/freesound_community-slot-in.mp3"
+				},
+				{
+					"alias": "win-sfx",
+					"src": "assets/sounds/universfield-game-level-complete.mp3"
+				},
+				{
+					"alias": "coin-spray-sfx",
+					"src": "assets/sounds/floraphonic-jackpot-slot-machine-coin-loop.mp3"
+				},
+				{
+					"alias": "owl-voice",
+					"src": "assets/sounds/universfield-owl-2.mp3"
+				}
+			]
+		}
+	]
+}
