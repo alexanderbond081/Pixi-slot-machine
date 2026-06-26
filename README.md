@@ -100,6 +100,7 @@ Game visuals and audio were assembled from several sources:
 - **[Pixabay](https://pixabay.com/)** — some materials used in asset creation (images and sounds). Pixabay content is subject to the [Pixabay License](https://pixabay.com/service/license/); check individual files before commercial use or redistribution.
 - **AI-generated images** — some graphics in this demo were created or refined with AI image generation tools.
 - **Spine sample assets** (`src/assets/spine/`) — include their own `license.txt` files. Review those licenses before any commercial use.
+- **Some sound effects**  — get from https://gfxsounds.com
 
 All assets are included for demo purposes only. Verify attribution, licensing, and usage rights before redistribution or production deployment.
 
