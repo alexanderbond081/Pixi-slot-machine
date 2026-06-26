@@ -68,10 +68,6 @@
 					"src": "assets/sounds/deuslower-fantasy-medieval-ambient.mp3"
 				},
 				{
-					"alias": "bg-music-medieval",
-					"src": "assets/sounds/medieval_horizons-medieval-horizons.mp3"
-				},
-				{
 					"alias": "ambience",
 					"src": "assets/sounds/eryliaa-evening-crickets-and-birds-with-cuckoo.mp3"
 				},
