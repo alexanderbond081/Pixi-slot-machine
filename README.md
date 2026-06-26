@@ -93,19 +93,26 @@ src/
 - Balance / bet system
 - GSAP for UI and fade animations
 
-## Third-Party Assets
 
-Game visuals and audio were assembled from several sources:
+## Third-Party Assets & Credits
 
-- **[Pixabay](https://pixabay.com/)** — some materials used in asset creation (images and sounds). Pixabay content is subject to the [Pixabay License](https://pixabay.com/service/license/); check individual files before commercial use or redistribution.
-- **AI-generated images** — some graphics in this demo were created or refined with AI image generation tools.
-- **Spine sample assets** (`src/assets/spine/`) — include their own `license.txt` files. Review those licenses before any commercial use.
-- **Some sound effects**  — get from https://gfxsounds.com
+This demo uses third-party assets for demonstration purposes. Before any commercial use or redistribution, verify individual licensing terms:
 
-All assets are included for demo purposes only. Verify attribution, licensing, and usage rights before redistribution or production deployment.
+- **Spine Sample Assets** (`coin` and `owl` animations):
+  Copyright (c) 2018, Esoteric Software LLC. All rights reserved. Spine and the Spine logo are trademarks or registered trademarks of Esoteric Software LLC in the United States and/or other countries.
+- **Pixabay** (images and sounds):
+  Some materials used in asset creation are sourced from Pixabay and are subject to the [Pixabay License](https://pixabay.com).
+- **Sound Effects**:
+  Additional sound effects sourced from [GfxSounds](https://gfxsounds.com).
+- **AI-Generated Content**:
+  Some graphics in this demo were created or refined using AI image generation tools.
 
 ## License
 
-Project code: ISC (see `package.json`).
+### Project Code
+The source code of this project is licensed under the **ISC License**. You are free to use, copy, modify, and distribute this software for any purpose with or without fee, provided that the copyright notice and permission notice appear in all copies.
 
-Third-party assets may have separate licenses — see asset folders and `license.txt` files where present.
+See the `LICENSE` file in the root directory for the full text.
+
+### Assets License
+The ISC license applies **only to the source code** created for this project. It does not cover the third-party assets (animations, images, and audio tracks) listed in the Credits section above. These assets remain the property of their respective owners and are subject to their own licensing terms.
