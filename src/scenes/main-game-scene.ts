@@ -346,11 +346,10 @@ export class MainGameScene extends Scene {
 
 	private owlAddStress(amount: number = 1): void {
 		if ((Math.random() * 0.4 + this.owlStress * 0.2) > 0.99) {
-			this.owl.playAnimation('up', 0.1, false);
+			this.owl.playAnimation('up', 1, true, 1);
 			SoundManager.playSound('owl-voice');
 			this.owlStress = 0;
 		} else {
-
 			this.owl.playAnimation('blink', (amount < 1) ? 2.5 : 0.5, false);
 			this.owlStress += amount;
 		}

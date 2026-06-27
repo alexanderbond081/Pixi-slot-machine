@@ -8,7 +8,7 @@
     "build": "webpack --mode production"
   },
   "keywords": [],
-  "author": "",
+  "author": "Aliaksandr Bandarenka (https://github.com/alexanderbond081)",
   "license": "ISC",
   "devDependencies": {
     "copy-webpack-plugin": "^13.0.1",

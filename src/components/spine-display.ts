@@ -35,16 +35,17 @@ export class SpineDisplay extends Container {
 		);
 	}
 
-	public playAnimation(animationName: string, timeScale: number = 1, loop: boolean = false): void {
+	public playAnimation(animationName: string, timeScale: number = 1, loop: boolean = false, durationSec?: number): void {
 		if (!this.animations.includes(animationName)) {
-			console.warn(`Unknown coin animation: ${animationName}`);
+			console.warn(`Unknown animation: ${animationName}`);
 			return;
 		}
 
-		this.setAnimationTimeScale(
-			this.spineAnim.state.setAnimation(0, animationName, loop),
-			timeScale
-		);
+		const newAnimation = this.spineAnim.state.setAnimation(0, animationName, loop);
+		this.setAnimationTimeScale(newAnimation, timeScale);
+		if (durationSec !== undefined && durationSec > 0) {
+			newAnimation.trackEnd = durationSec;
+		}
 
 		if (!loop) {
 			this.setAnimationTimeScale(
