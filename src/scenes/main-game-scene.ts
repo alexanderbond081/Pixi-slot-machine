@@ -63,7 +63,7 @@ export class MainGameScene extends Scene {
 		}
 		this.leverPlayAnimation('pull', 0.3);
 		SoundManager.playSound('lever-sfx');
-		this.owl.playAnimation('down', 0.1, true);
+		this.owl.playAnimation('down', 1, true);
 		await new Promise(resolve => setTimeout(resolve, 500));
 	}
 
@@ -96,7 +96,7 @@ export class MainGameScene extends Scene {
 			this.reels[i].stopSpin(symbol);
 		}
 
-		this.owl.playAnimation('blink', 0.3, false);
+		this.owl.playAnimation('blink', 1, false);
 
 		await Promise.all(allStopped);
 	}
@@ -110,7 +110,7 @@ export class MainGameScene extends Scene {
 	public async playWin(): Promise<void> {
 		SoundManager.playSound('win-sfx');
 		SoundManager.playSound('coin-spray-sfx');
-		this.owl.playAnimation('left', 0.2, true);
+		this.owl.playAnimation('left', 1, true);
 		this.owlStress = 0;
 		await this.playCoinsSpread();
 		this.owl.playAnimation('blink', 2, false);
@@ -350,7 +350,7 @@ export class MainGameScene extends Scene {
 			SoundManager.playSound('owl-voice');
 			this.owlStress = 0;
 		} else {
-			this.owl.playAnimation('blink', (amount < 1) ? 2.5 : 0.5, false);
+			this.owl.playAnimation('blink', (amount < 1) ? 2 : 0.2, false, 3.5);
 			this.owlStress += amount;
 		}
 	}

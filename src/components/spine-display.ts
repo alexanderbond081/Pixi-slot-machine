@@ -6,17 +6,17 @@ export class SpineDisplay extends Container {
 
 	constructor(
 		protected spineAnim: Spine,
-		protected idleAnimation: string = 'idle',
+		protected idleAnimName: string = 'idle',
 		protected idleTimeScale: number = 1,
 		protected skinName: string = '',
 	) {
 		super();
 
 		this.animations.push(...this.spineAnim.skeleton.data.animations.map((anim) => anim.name),);
-		if (!this.animations.includes(this.idleAnimation)) {
+		if (!this.animations.includes(this.idleAnimName)) {
 			const animation = this.animations.at(0);
 			if (animation) {
-				this.idleAnimation = animation;
+				this.idleAnimName = animation;
 			} else {
 				console.warn("Spine has no animations");
 			}
@@ -30,7 +30,7 @@ export class SpineDisplay extends Container {
 		this.addChild(this.spineAnim);
 
 		this.setAnimationTimeScale(
-			this.spineAnim.state.setAnimation(0, this.idleAnimation, true),
+			this.spineAnim.state.setAnimation(0, this.idleAnimName, true),
 			this.idleTimeScale
 		);
 	}
@@ -41,17 +41,18 @@ export class SpineDisplay extends Container {
 			return;
 		}
 
-		const newAnimation = this.spineAnim.state.setAnimation(0, animationName, loop);
-		this.setAnimationTimeScale(newAnimation, timeScale);
-		if (durationSec !== undefined && durationSec > 0) {
-			newAnimation.trackEnd = durationSec;
+		const newAnima = this.spineAnim.state.setAnimation(0, animationName, loop);
+		this.setAnimationTimeScale(newAnima, timeScale);
+
+		const duration = Math.max(0, (durationSec ?? 0) * Math.abs(timeScale));
+
+		if (duration > 0) {
+			newAnima.trackEnd = duration;
 		}
 
-		if (!loop) {
-			this.setAnimationTimeScale(
-				this.spineAnim.state.addAnimation(0, this.idleAnimation, true, 0),
-				this.idleTimeScale
-			);
+		if (!loop || duration > 0) {
+			const nextAnim = this.spineAnim.state.addAnimation(0, this.idleAnimName, true, duration);
+			this.setAnimationTimeScale(nextAnim, this.idleTimeScale);
 		}
 
 		this.spineAnim.update(0);
