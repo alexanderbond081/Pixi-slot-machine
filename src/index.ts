@@ -1,10 +1,18 @@
 
 import { Application, Container, Graphics, Assets } from 'pixi.js';
+import * as PIXI from 'pixi.js';
+
+import { gsap } from 'gsap';
+import { PixiPlugin } from 'gsap/PixiPlugin';
+
 import { Scene } from './scenes/scene';
 import { LoadingScene } from './scenes/loading-scene';
 import { MainGameScene } from './scenes/main-game-scene';
 import { PreloadScene } from './scenes/preload-scene';
 import { SlotMachineModel } from './game/slot-machine-model';
+
+gsap.registerPlugin(PixiPlugin);
+PixiPlugin.registerPIXI(PIXI);
 
 const app = new Application();
 const slotMachine = new SlotMachineModel();
@@ -115,27 +123,18 @@ function initFadeEffect(): void {
 }
 
 async function fadeEffect(durationMs: number, fadeOut: boolean, color: number = 0x222222): Promise<void> {
+	gsap.killTweensOf(fadeRect);
 	fadeRect.tint = color;
 	fadeRect.visible = true;
-	const start = performance.now();
-	return new Promise<void>((resolve) => {
-		const tick = (_ticker: any) => {
-			const t = Math.min(1, (performance.now() - start) / durationMs);
-			if (fadeOut) {
-				fadeRect.alpha = t;
-			} else {
-				fadeRect.alpha = 1 - t;
-			}
-			if (t >= 1) {
-				app.ticker.remove(tick);
-				if (!fadeOut) {
-					fadeRect.visible = false;
-				}
-				resolve();
-			}
-		};
-		app.ticker.add(tick);
+
+	await gsap.to(fadeRect, {
+		pixi: { alpha: fadeOut ? 1 : 0 },
+		duration: durationMs / 1000,
 	});
+
+	if (!fadeOut) {
+		fadeRect.visible = false;
+	}
 }
 
 async function onLeverTriggered(): Promise<void> {

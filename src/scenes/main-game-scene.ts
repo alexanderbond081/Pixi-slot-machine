@@ -1,4 +1,5 @@
 import { Sprite, Texture, Container, Assets, Spritesheet, AnimatedSprite, Graphics, ParticleContainer } from 'pixi.js';
+import { gsap } from 'gsap';
 
 import { Scene } from './scene';
 import { AnotherFly } from '../components/particle-fly';
