@@ -368,7 +368,44 @@ export class MainGameScene extends Scene {
 
 		this.soundButtonAnimated.eventMode = 'static';
 		this.soundButtonAnimated.cursor = 'pointer';
+
+		this.soundButtonAnimated.on('pointerover', () => {
+			gsap.to(this.soundButtonAnimated,
+				{
+					pixi: { contrast: 0.9, brightness: 1.1 },
+					duration: 0.1,
+					overwrite: 'auto',
+				});
+		});
+
+		this.soundButtonAnimated.on('pointerout', () => {
+			gsap.to(this.soundButtonAnimated,
+				{
+					pixi: { contrast: 1, brightness: 1 },
+					duration: 0.1,
+					overwrite: 'auto',
+				});
+		});
+
 		this.soundButtonAnimated.on('pointerdown', () => {
+			gsap.to(this.soundButtonAnimated,
+				{
+					pixi: { tint: "#bbbbbb" },
+					duration: 0.1,
+					overwrite: 'auto',
+				});
+		});
+
+		this.soundButtonAnimated.on('pointerupoutside', () => {
+			gsap.to(this.soundButtonAnimated,
+				{
+					pixi: { tint: "#ffffff" },
+					duration: 0.1,
+					overwrite: 'auto',
+				});
+		});
+
+		this.soundButtonAnimated.on('pointertap', () => {
 			if (this.isClickBlocked) return;
 
 			if (SoundManager.toggleGlobal()) {
@@ -392,31 +429,12 @@ export class MainGameScene extends Scene {
 					pixi: { scaleX: scaleX * effect, scaleY: scaleY * effect },
 				},
 				{
-					pixi: { scaleX, scaleY, },// contrast: 1, brightness: 1 },
+					pixi: { scaleX, scaleY, tint: "#eeeeee" },// contrast: 1, brightness: 1 },
 					duration: 0.666,
 					ease: "elastic.out(0.5, 0.3)",
+					overwrite: "auto",
 				});
 
-		});
-
-		this.soundButtonAnimated.on('pointerover', () => {
-			gsap.to(this.soundButtonAnimated,
-				//{ pixi: { contrast: 1, brightness: 1 }, },
-				{
-					pixi: { contrast: 0.8, brightness: 1.1 },
-					duration: 0.1,
-					overwrite: 'auto',
-				});
-		});
-
-		this.soundButtonAnimated.on('pointerout', () => {
-			gsap.to(this.soundButtonAnimated,
-				//{ pixi: { contrast: 0.7, brightness: 1.15 }, },
-				{
-					pixi: { contrast: 1, brightness: 1 },
-					duration: 0.1,
-					overwrite: 'auto',
-				});
 		});
 
 		this.addChild(this.soundButtonAnimated);
