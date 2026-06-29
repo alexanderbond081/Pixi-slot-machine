@@ -1,4 +1,4 @@
-import { Sprite, Texture, Container, Assets, Spritesheet, AnimatedSprite, Graphics, ParticleContainer } from 'pixi.js';
+import { Sprite, Texture, Container, Assets, Spritesheet, AnimatedSprite, Graphics, ParticleContainer, ColorMatrixFilter, ColorBlend } from 'pixi.js';
 import { gsap } from 'gsap';
 
 import { Scene } from './scene';
@@ -19,6 +19,8 @@ export class MainGameScene extends Scene {
 
 	private soundButtonSheet!: Spritesheet;
 	private soundButtonAnimated!: AnimatedSprite;
+	private soundButtonScale: number = 1;
+	private isClickBlocked: boolean = false;
 
 	private flies: AnotherFly[] = [];
 	private fliesContainer!: ParticleContainer;
@@ -361,28 +363,82 @@ export class MainGameScene extends Scene {
 
 		this.soundButtonAnimated = new AnimatedSprite(this.soundButtonSheet.animations['on']);
 		this.soundButtonAnimated.loop = false;
+
 		this.adjustSoundButton();
 
 		this.soundButtonAnimated.eventMode = 'static';
 		this.soundButtonAnimated.cursor = 'pointer';
 		this.soundButtonAnimated.on('pointerdown', () => {
+			if (this.isClickBlocked) return;
+
 			if (SoundManager.toggleGlobal()) {
 				this.soundButtonAnimated.textures = this.soundButtonSheet.animations['off'];
+
 			} else {
 				this.soundButtonAnimated.textures = this.soundButtonSheet.animations['on'];
 			}
+
+			this.isClickBlocked = true;
+			gsap.delayedCall(0.15, () => {
+				this.isClickBlocked = false;
+			});
+
+			const effect: number = 0.8;
+			const scaleX = this.soundButtonScale;
+			const scaleY = this.soundButtonScale;
+
+			gsap.fromTo(this.soundButtonAnimated,
+				{
+					pixi: { scaleX: scaleX * effect, scaleY: scaleY * effect },
+				},
+				{
+					pixi: { scaleX, scaleY, },// contrast: 1, brightness: 1 },
+					duration: 0.666,
+					ease: "elastic.out(0.5, 0.3)",
+				});
+
+		});
+
+		this.soundButtonAnimated.on('pointerover', () => {
+			gsap.to(this.soundButtonAnimated,
+				//{ pixi: { contrast: 1, brightness: 1 }, },
+				{
+					pixi: { contrast: 0.8, brightness: 1.1 },
+					duration: 0.1,
+					overwrite: 'auto',
+				});
+		});
+
+		this.soundButtonAnimated.on('pointerout', () => {
+			gsap.to(this.soundButtonAnimated,
+				//{ pixi: { contrast: 0.7, brightness: 1.15 }, },
+				{
+					pixi: { contrast: 1, brightness: 1 },
+					duration: 0.1,
+					overwrite: 'auto',
+				});
 		});
 
 		this.addChild(this.soundButtonAnimated);
 	}
 
 	private adjustSoundButton(): void {
-		const scale = this.calcScale();
-		const size = 42 * scale;
-		this.soundButtonAnimated.width = size;
-		this.soundButtonAnimated.height = size;
-		this.soundButtonAnimated.x = 24 * scale;
-		this.soundButtonAnimated.y = 20 * scale;
+		const BASE_BUTTON_SIZE = 42;
+		const baseScale = this.calcScale();
+		const size = BASE_BUTTON_SIZE * baseScale;
+		const textureSize = this.soundButtonAnimated.texture.height;
+		/*console.log('BASE_BUTTON_SIZE', BASE_BUTTON_SIZE);
+		console.log('baseScale', baseScale);
+		console.log('size', size);
+		console.log('textureSize', textureSize);*/
+
+		// to support GSAP geometry effects you have to set scale, setting size results in wrong visual effects
+		this.soundButtonScale = size / textureSize * baseScale;
+		this.soundButtonAnimated.pivot.x = textureSize / 2;
+		this.soundButtonAnimated.pivot.y = textureSize / 2;
+		this.soundButtonAnimated.scale.set(this.soundButtonScale);
+		this.soundButtonAnimated.x = (24 + BASE_BUTTON_SIZE / 2) * baseScale;
+		this.soundButtonAnimated.y = (20 + BASE_BUTTON_SIZE / 2) * baseScale;
 	}
 
 	private async addCoins(): Promise<void> {
