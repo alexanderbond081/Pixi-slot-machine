@@ -1,5 +1,5 @@
 import { Sprite, Texture, Container, Assets, Spritesheet, AnimatedSprite, Graphics, ParticleContainer } from 'pixi.js';
-
+import { gsap } from 'gsap';
 import { Scene } from './scene';
 import { AnotherFly } from '../components/particle-fly';
 import { Coin, CoinThrowOptions } from '../components/coin';
@@ -7,6 +7,8 @@ import { Reel, ReelState } from '../components/reel';
 import { Spine } from '@esotericsoftware/spine-pixi-v8';
 import { SoundManager } from '../managers/sound-manager';
 import { SpineDisplay } from '../components/spine-display';
+import { UIButton } from '../components/ui-button';
+import { HighlightDecoration } from '../components/highlight-decoration';
 
 export class MainGameScene extends Scene {
 	private bgSprite!: Sprite;
@@ -17,7 +19,8 @@ export class MainGameScene extends Scene {
 	private leverButton!: Graphics;
 
 	private soundButtonSheet!: Spritesheet;
-	private soundButtonAnimated!: AnimatedSprite;
+	private soundButton!: UIButton;
+	private isClickBlocked: boolean = false;
 
 	private flies: AnotherFly[] = [];
 	private fliesContainer!: ParticleContainer;
@@ -63,7 +66,7 @@ export class MainGameScene extends Scene {
 		}
 		this.leverPlayAnimation('pull', 0.3);
 		SoundManager.playSound('lever-sfx');
-		this.owl.playAnimation('down', 0.1, true);
+		this.owl.playAnimation('down', 1, true);
 		await new Promise(resolve => setTimeout(resolve, 500));
 	}
 
@@ -96,7 +99,7 @@ export class MainGameScene extends Scene {
 			this.reels[i].stopSpin(symbol);
 		}
 
-		this.owl.playAnimation('blink', 0.3, false);
+		this.owl.playAnimation('blink', 1, false);
 
 		await Promise.all(allStopped);
 	}
@@ -110,7 +113,7 @@ export class MainGameScene extends Scene {
 	public async playWin(): Promise<void> {
 		SoundManager.playSound('win-sfx');
 		SoundManager.playSound('coin-spray-sfx');
-		this.owl.playAnimation('left', 0.2, true);
+		this.owl.playAnimation('left', 1, true);
 		this.owlStress = 0;
 		await this.playCoinsSpread();
 		this.owl.playAnimation('blink', 2, false);
@@ -346,43 +349,44 @@ export class MainGameScene extends Scene {
 
 	private owlAddStress(amount: number = 1): void {
 		if ((Math.random() * 0.4 + this.owlStress * 0.2) > 0.99) {
-			this.owl.playAnimation('up', 0.1, false);
+			this.owl.playAnimation('up', 1, true, 1);
 			SoundManager.playSound('owl-voice');
 			this.owlStress = 0;
 		} else {
-
-			this.owl.playAnimation('blink', (amount < 1) ? 2.5 : 0.5, false);
+			this.owl.playAnimation('blink', (amount < 1) ? 2 : 0.2, false, 3.5);
 			this.owlStress += amount;
 		}
 	}
 
 	private async addSoundButton(): Promise<void> {
 		this.soundButtonSheet = await Assets.load<Spritesheet>('sound-button-brown');
-
-		this.soundButtonAnimated = new AnimatedSprite(this.soundButtonSheet.animations['on']);
-		this.soundButtonAnimated.loop = false;
+		const decorator = new HighlightDecoration(0.8);
+		this.soundButton = new UIButton(this.soundButtonSheet, 'sound-on', 42, 42, decorator);
 		this.adjustSoundButton();
+		this.addChild(this.soundButton);
 
-		this.soundButtonAnimated.eventMode = 'static';
-		this.soundButtonAnimated.cursor = 'pointer';
-		this.soundButtonAnimated.on('pointerdown', () => {
+		this.soundButton.on('pointertap', () => {
+			if (this.isClickBlocked) return;
+
 			if (SoundManager.toggleGlobal()) {
-				this.soundButtonAnimated.textures = this.soundButtonSheet.animations['off'];
+				this.soundButton.setTexture('sound-off');
 			} else {
-				this.soundButtonAnimated.textures = this.soundButtonSheet.animations['on'];
+				this.soundButton.setTexture('sound-on');
 			}
-		});
 
-		this.addChild(this.soundButtonAnimated);
+			this.isClickBlocked = true;
+			gsap.delayedCall(0.15, () => {
+				this.isClickBlocked = false;
+			});
+		});
 	}
 
 	private adjustSoundButton(): void {
+		const baseSize = this.soundButton.baseWidth;
 		const scale = this.calcScale();
-		const size = 42 * scale;
-		this.soundButtonAnimated.width = size;
-		this.soundButtonAnimated.height = size;
-		this.soundButtonAnimated.x = 24 * scale;
-		this.soundButtonAnimated.y = 20 * scale;
+		this.soundButton.x = (24 + baseSize / 2) * scale;
+		this.soundButton.y = (20 + baseSize / 2) * scale;
+		this.soundButton.adjustScale(scale, scale);
 	}
 
 	private async addCoins(): Promise<void> {

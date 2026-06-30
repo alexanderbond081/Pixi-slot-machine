@@ -34,11 +34,11 @@ export class Coin extends SpineDisplay {
 
 	constructor(
 		spineAnim: Spine,
-		idleAnimation: string = '',
+		idleAnimName: string = '',
 		idleTimeScale: number = 1,
 		skinName: string = '',
 	) {
-		super(spineAnim, idleAnimation, idleTimeScale, skinName);
+		super(spineAnim, idleAnimName, idleTimeScale, skinName);
 	}
 
 	public throw(options: Partial<CoinThrowOptions> = {}): void {
@@ -51,7 +51,7 @@ export class Coin extends SpineDisplay {
 		this.speedScale = p.speedScale;
 		this.gravity = p.gravity;
 		this.floor = p.floor;
-		this.playAnimation(this.idleAnimation, p.spinSpeed, true);
+		this.playAnimation(this.idleAnimName, p.spinSpeed, true);
 		this.setVisible(true);
 	}
 

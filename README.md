@@ -1,6 +1,6 @@
 # Another HTML5 Slot Machine Game Demo
 
-A browser-based slot machine demo built with **Pixi.js v8**, **TypeScript**, and **Spine** skeletal animations. The project showcases reel spinning mechanics, win/lose feedback, ambient audio, and a scene-based loading flow.
+A browser-based slot machine demo built with **Pixi.js v8**, **TypeScript**, **GSAP**, and **Spine** skeletal animations. The project showcases reel spinning mechanics, win/lose feedback, ambient audio, and a scene-based loading flow.
 
 ## Features
 
@@ -8,7 +8,8 @@ A browser-based slot machine demo built with **Pixi.js v8**, **TypeScript**, and
 - **Mock server spin results** — symbol outcomes and win detection are simulated asynchronously (no client-side cheat logic on the final design path)
 - **Spine animations** — owl character reactions and coin burst particles on win
 - **Layered audio** — separate music, ambience, and SFX buses via `@pixi/sound`; per-reel spin sounds with staggered stop clicks
-- **Scene flow** — preload splash → loading screen with progress bar → main game
+- **Scene flow** — preload splash → loading screen with progress bar → main game, with GSAP fade transitions
+- **UI button feedback** — `UIButton` with pluggable `MouseActionDecoration` (sound toggle uses `HighlightDecoration`: hover highlight, press tint, elastic tap)
 - **Input** — pull the lever (click) or press **Space** / **Enter**
 
 ## Tech Stack
@@ -17,7 +18,7 @@ A browser-based slot machine demo built with **Pixi.js v8**, **TypeScript**, and
 |---|---|
 | Engine | [Pixi.js](https://pixijs.com/) v8 |
 | Language | TypeScript (strict) |
-| Animation | Spine (`@esotericsoftware/spine-pixi-v8`) |
+| Animation | Spine (`@esotericsoftware/spine-pixi-v8`), [GSAP](https://gsap.com/) v3 + PixiPlugin |
 | Audio | `@pixi/sound` |
 | Bundler | Webpack 5 |
 
@@ -62,14 +63,19 @@ docker run --rm -p 8080:80 slot-game-demo
 
 ```
 src/
-├── index.ts                 # App bootstrap, scene switching, game loop
-├── assets/                  # Images, sounds, Spine data, asset manifest
-├── components/              # Reel, Coin, SpineDisplay, particle effects
+├── index.ts                      # App bootstrap, GSAP/PixiPlugin setup, scene switching
+├── assets/                       # Images, sounds, Spine data, asset manifest
+├── components/
+│   ├── ui-button.ts              # Interactive UI button (Decoratable)
+│   ├── highlight-decoration.ts   # Hover / press / tap GSAP effects
+│   ├── mouse-action-decoration.ts
+│   ├── decoratable.ts
+│   ├── reel.ts, coin.ts, spine-display.ts, particle-fly.ts
 ├── game/
-│   └── slot-machine-model.ts  # Mock spin API
+│   └── slot-machine-model.ts     # Mock spin API
 ├── managers/
-│   └── sound-manager.ts     # Audio buses and playback
-└── scenes/                  # Preload, Loading, MainGame scenes
+│   └── sound-manager.ts          # Audio buses and playback
+└── scenes/                       # Preload, Loading, MainGame scenes
 ```
 
 ## How to Play
@@ -77,34 +83,44 @@ src/
 1. Wait for assets to load.
 2. Click the lever or press **Space** / **Enter** to spin.
 3. Reels stop one by one; a win triggers a coin spray and owl celebration.
+4. Use the sound button (top-left) to toggle audio.
 
 ## Development Notes
 
 - Assets are loaded through Pixi `Assets` bundles defined in `src/assets/manifest.json`.
 - Webpack aliases `pixi.js` to a single ESM entry point so Spine and the app share one Pixi instance.
 - Reel symbol keys originate from `SlotMachineModel` and are passed through the scene unchanged.
+- GSAP `PixiPlugin` is registered in `index.ts` for scene fade effects and UI decorations.
+- `Filter.defaultOptions.resolution = 'inherit'` keeps ColorMatrix filters (contrast/brightness) sharp on high-DPI and zoomed pages.
 - `npm run build` produces an optimized static bundle in `dist/` for deployment or Docker.
 
 ## Roadmap (planned)
 
-- Responsive layout (`resize` wiring)
+- Responsive layout (`resize` wiring, browser zoom / DPR sync)
 - `src/config.ts` for shared constants
 - HUD layer
 - Balance / bet system
-- GSAP for UI and fade animations
 
-## Third-Party Assets
 
-Game visuals and audio were assembled from several sources:
+## Third-Party Assets & Credits
 
-- **[Pixabay](https://pixabay.com/)** — some materials used in asset creation (images and sounds). Pixabay content is subject to the [Pixabay License](https://pixabay.com/service/license/); check individual files before commercial use or redistribution.
-- **AI-generated images** — some graphics in this demo were created or refined with AI image generation tools.
-- **Spine sample assets** (`src/assets/spine/`) — include their own `license.txt` files. Review those licenses before any commercial use.
+This demo uses third-party assets for demonstration purposes. Before any commercial use or redistribution, verify individual licensing terms:
 
-All assets are included for demo purposes only. Verify attribution, licensing, and usage rights before redistribution or production deployment.
+- **Spine Sample Assets** (`coin` and `owl` animations):
+  Copyright (c) 2018, Esoteric Software LLC. All rights reserved. Spine and the Spine logo are trademarks or registered trademarks of Esoteric Software LLC in the United States and/or other countries.
+- **Pixabay** (images and sounds):
+  Some materials used in asset creation are sourced from Pixabay and are subject to the [Pixabay License](https://pixabay.com).
+- **Sound Effects**:
+  Additional sound effects sourced from [GfxSounds](https://gfxsounds.com).
+- **AI-Generated Content**:
+  Some graphics in this demo were created or refined using AI image generation tools.
 
 ## License
 
-Project code: ISC (see `package.json`).
+### Project Code
+The source code of this project is licensed under the **ISC License**. You are free to use, copy, modify, and distribute this software for any purpose with or without fee, provided that the copyright notice and permission notice appear in all copies.
 
-Third-party assets may have separate licenses — see asset folders and `license.txt` files where present.
+See the `LICENSE` file in the root directory for the full text.
+
+### Assets License
+The ISC license applies **only to the source code** created for this project. It does not cover the third-party assets (animations, images, and audio tracks) listed in the Credits section above. These assets remain the property of their respective owners and are subject to their own licensing terms.
