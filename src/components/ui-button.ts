@@ -1,4 +1,4 @@
-import { Container, DestroyOptions, Sprite, Spritesheet, Texture } from 'pixi.js';
+import { Container, DestroyOptions, Sprite, Spritesheet } from 'pixi.js';
 import { Decoratable } from './decoratable';
 import { MouseActionDecoration } from './mouse-action-decoration';
 

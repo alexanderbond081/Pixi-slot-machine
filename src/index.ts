@@ -36,11 +36,12 @@ let inUse = false;
 async function initGame(): Promise<void> {
 
 	window.addEventListener('resize', () => {
-		//const dpr = window.devicePixelRatio || 1;
-		app.renderer.resolution = window.devicePixelRatio;
+		const dpr = window.devicePixelRatio || 1;
+		app.renderer.resolution = dpr;
+		// under construction
 		//app.renderer.resize(gameWidth, gameHeight);
 		//currentScene?.resize(gameWidth, gameHeight);
-		console.log('resized', window.devicePixelRatio);
+		//console.log('resized', window.devicePixelRatio);
 	});
 
 	await app.init({

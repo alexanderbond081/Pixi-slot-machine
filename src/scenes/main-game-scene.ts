@@ -1,6 +1,5 @@
-import { Sprite, Texture, Container, Assets, Spritesheet, AnimatedSprite, Graphics, ParticleContainer, ColorMatrixFilter, ColorBlend } from 'pixi.js';
+import { Sprite, Texture, Container, Assets, Spritesheet, AnimatedSprite, Graphics, ParticleContainer } from 'pixi.js';
 import { gsap } from 'gsap';
-
 import { Scene } from './scene';
 import { AnotherFly } from '../components/particle-fly';
 import { Coin, CoinThrowOptions } from '../components/coin';

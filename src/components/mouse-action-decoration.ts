@@ -22,10 +22,14 @@ export abstract class MouseActionDecoration {
 		target.on('pointerup', this.handlePointerUp, this);
 		target.on('pointerupoutside', this.handlePointerUpOutside, this);
 		target.on('pointertap', this.handlePointerTap, this);
+
+		this.onAttach(this.host);
 	}
 
 	public detach(): void {
 		if (!this.host) return;
+
+		this.onDetach(this.host);
 
 		const target = this.host.interactiveTarget;
 		target.off('pointerover', this.handlePointerOver, this);
@@ -43,6 +47,9 @@ export abstract class MouseActionDecoration {
 			this.onUpdateAnimations(this.host);
 		}
 	}
+
+	protected abstract onAttach(host: Decoratable): void;
+	protected abstract onDetach(host: Decoratable): void;
 
 	protected abstract onPointerOver(host: Decoratable): void;
 	protected abstract onPointerOut(host: Decoratable): void;
@@ -63,42 +70,36 @@ export abstract class MouseActionDecoration {
 	private handlePointerOver(): void {
 		if (this.checkHost()) {
 			this.onPointerOver(this.host!);
-			//console.log('pointer over the button');
 		}
 	}
 
 	private handlePointerOut(): void {
 		if (this.checkHost()) {
 			this.onPointerOut(this.host!);
-			//console.log('pointer out the button');
 		}
 	}
 
 	private handlePointerDown(): void {
 		if (this.checkHost()) {
 			this.onPointerDown(this.host!);
-			//console.log('pointer down the button');
 		}
 	}
 
 	private handlePointerUp(): void {
 		if (this.checkHost()) {
 			this.onPointerUp(this.host!);
-			//console.log('pointer up the button');
 		}
 	}
 
 	private handlePointerUpOutside(): void {
 		if (this.checkHost()) {
 			this.onPointerUpOutside(this.host!);
-			//console.log('pointer up outside the button');
 		}
 	}
 
 	private handlePointerTap(): void {
 		if (this.checkHost()) {
 			this.onPointerTap(this.host!);
-			console.log('pointer over the button');
 		}
 	}
 }

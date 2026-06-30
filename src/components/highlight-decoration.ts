@@ -10,14 +10,29 @@ export class HighlightDecoration extends MouseActionDecoration {
 		this.scaleEffect = scaleEffect;
 	}
 
-	public onUpdateAnimations(host: Decoratable) {
-		for (const tween of gsap.getTweensOf(host)) {
+	protected onUpdateAnimations(host: Decoratable) {
+		for (const tween of gsap.getTweensOf(host.animationTarget)) {
 			const pixi = tween.vars.pixi as Record<string, number> | undefined;
 			if (!pixi || pixi.scaleX === undefined) continue;
 			pixi.scaleX = host.actualScaleX;
 			pixi.scaleY = host.actualScaleY;
 			tween.invalidate();
 		}
+	}
+
+	protected onAttach(host: Decoratable): void {
+
+	}
+
+	protected onDetach(host: Decoratable): void {
+		const target = host.animationTarget;
+
+		for (const tween of gsap.getTweensOf(target)) {
+			tween.kill();
+		}
+
+		target.filters = null;
+		target.tint = 0xffffff;
 	}
 
 	protected onPointerOver(host: Decoratable): void {
@@ -67,7 +82,6 @@ export class HighlightDecoration extends MouseActionDecoration {
 				duration: 0.666,
 				ease: "elastic.out(0.5, 0.3)",
 				overwrite: "auto",
-				onComplete: () => { console.log('tap complete'); }
 			});
 
 		gsap.to(host.animationTarget,
