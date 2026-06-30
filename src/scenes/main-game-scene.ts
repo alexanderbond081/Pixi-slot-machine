@@ -8,6 +8,8 @@ import { Reel, ReelState } from '../components/reel';
 import { Spine } from '@esotericsoftware/spine-pixi-v8';
 import { SoundManager } from '../managers/sound-manager';
 import { SpineDisplay } from '../components/spine-display';
+import { UIButton } from '../components/ui-button';
+import { HighlightDecoration } from '../components/highlight-decoration';
 
 export class MainGameScene extends Scene {
 	private bgSprite!: Sprite;
@@ -18,8 +20,7 @@ export class MainGameScene extends Scene {
 	private leverButton!: Graphics;
 
 	private soundButtonSheet!: Spritesheet;
-	private soundButtonAnimated!: AnimatedSprite;
-	private soundButtonScale: number = 1;
+	private soundButton!: UIButton;
 	private isClickBlocked: boolean = false;
 
 	private flies: AnotherFly[] = [];
@@ -360,103 +361,33 @@ export class MainGameScene extends Scene {
 
 	private async addSoundButton(): Promise<void> {
 		this.soundButtonSheet = await Assets.load<Spritesheet>('sound-button-brown');
-
-		this.soundButtonAnimated = new AnimatedSprite(this.soundButtonSheet.animations['on']);
-		this.soundButtonAnimated.loop = false;
-
+		const decorator = new HighlightDecoration(0.8);
+		this.soundButton = new UIButton(this.soundButtonSheet, 'sound-on', 42, 42, decorator);
 		this.adjustSoundButton();
+		this.addChild(this.soundButton);
 
-		this.soundButtonAnimated.eventMode = 'static';
-		this.soundButtonAnimated.cursor = 'pointer';
-
-		this.soundButtonAnimated.on('pointerover', () => {
-			gsap.to(this.soundButtonAnimated,
-				{
-					pixi: { contrast: 0.9, brightness: 1.1 },
-					duration: 0.1,
-					overwrite: 'auto',
-				});
-		});
-
-		this.soundButtonAnimated.on('pointerout', () => {
-			gsap.to(this.soundButtonAnimated,
-				{
-					pixi: { contrast: 1, brightness: 1 },
-					duration: 0.1,
-					overwrite: 'auto',
-				});
-		});
-
-		this.soundButtonAnimated.on('pointerdown', () => {
-			gsap.to(this.soundButtonAnimated,
-				{
-					pixi: { tint: "#bbbbbb" },
-					duration: 0.1,
-					overwrite: 'auto',
-				});
-		});
-
-		this.soundButtonAnimated.on('pointerupoutside', () => {
-			gsap.to(this.soundButtonAnimated,
-				{
-					pixi: { tint: "#ffffff" },
-					duration: 0.1,
-					overwrite: 'auto',
-				});
-		});
-
-		this.soundButtonAnimated.on('pointertap', () => {
+		this.soundButton.on('pointertap', () => {
 			if (this.isClickBlocked) return;
 
 			if (SoundManager.toggleGlobal()) {
-				this.soundButtonAnimated.textures = this.soundButtonSheet.animations['off'];
-
+				this.soundButton.setTexture('sound-off');
 			} else {
-				this.soundButtonAnimated.textures = this.soundButtonSheet.animations['on'];
+				this.soundButton.setTexture('sound-on');
 			}
 
 			this.isClickBlocked = true;
 			gsap.delayedCall(0.15, () => {
 				this.isClickBlocked = false;
 			});
-
-			const effect: number = 0.8;
-			const scaleX = this.soundButtonScale;
-			const scaleY = this.soundButtonScale;
-
-			gsap.fromTo(this.soundButtonAnimated,
-				{
-					pixi: { scaleX: scaleX * effect, scaleY: scaleY * effect },
-				},
-				{
-					pixi: { scaleX, scaleY, tint: "#eeeeee" },// contrast: 1, brightness: 1 },
-					duration: 0.666,
-					ease: "elastic.out(0.5, 0.3)",
-					overwrite: "auto",
-				});
-
 		});
-
-		this.addChild(this.soundButtonAnimated);
 	}
 
 	private adjustSoundButton(): void {
-		const BASE_BUTTON_SIZE = 42;
-		const baseScale = this.calcScale();
-		const size = BASE_BUTTON_SIZE * baseScale;
-		const textureSize = this.soundButtonAnimated.texture.height;
-		/*console.log('BASE_BUTTON_SIZE', BASE_BUTTON_SIZE);
-		console.log('baseScale', baseScale);
-		console.log('size', size);
-		console.log('textureSize', textureSize);*/
-
-		// to support GSAP geometry effects you have to set scale, setting size results in wrong visual effects
-		this.soundButtonScale = size / textureSize * baseScale;
-		this.soundButtonAnimated.pivot.x = textureSize / 2;
-		this.soundButtonAnimated.pivot.y = textureSize / 2;
-		this.soundButtonAnimated.scale.set(this.soundButtonScale);
-		this.soundButtonAnimated.x = (24 + BASE_BUTTON_SIZE / 2) * baseScale;
-		this.soundButtonAnimated.y = (20 + BASE_BUTTON_SIZE / 2) * baseScale;
+		const baseSize = this.soundButton.baseWidth;
+		const scale = this.calcScale();
+		this.soundButton.x = (24 + baseSize / 2) * scale;
+		this.soundButton.y = (20 + baseSize / 2) * scale;
+		this.soundButton.adjustScale(scale, scale);
 	}
 
 	private async addCoins(): Promise<void> {

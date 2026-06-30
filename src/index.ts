@@ -10,7 +10,9 @@ import { LoadingScene } from './scenes/loading-scene';
 import { MainGameScene } from './scenes/main-game-scene';
 import { PreloadScene } from './scenes/preload-scene';
 import { SlotMachineModel } from './game/slot-machine-model';
+import { Filter } from 'pixi.js';
 
+Filter.defaultOptions.resolution = 'inherit';
 gsap.registerPlugin(PixiPlugin);
 PixiPlugin.registerPIXI(PIXI);
 
@@ -32,6 +34,15 @@ let isPaused = true;
 let inUse = false;
 
 async function initGame(): Promise<void> {
+
+	window.addEventListener('resize', () => {
+		//const dpr = window.devicePixelRatio || 1;
+		app.renderer.resolution = window.devicePixelRatio;
+		//app.renderer.resize(gameWidth, gameHeight);
+		//currentScene?.resize(gameWidth, gameHeight);
+		console.log('resized', window.devicePixelRatio);
+	});
+
 	await app.init({
 		background: '0x222222',
 		width: gameWidth,
