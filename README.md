@@ -47,7 +47,9 @@ Webpack dev server runs with hot reload on port **3000**.
 npm run build
 ```
 
-Output is written to `dist/` (HTML, `bundle.js`, and copied assets).
+Output is written to `dist/` (HTML, `bundle.js`, copied assets, and `BUILD.txt` with version metadata).
+
+For itch.io uploads, use the dedicated build command (see [Versioning & Releases](#versioning--releases)).
 
 ### Docker
 
@@ -93,6 +95,70 @@ src/
 - GSAP `PixiPlugin` is registered in `index.ts` for scene fade effects and UI decorations.
 - `Filter.defaultOptions.resolution = 'inherit'` keeps ColorMatrix filters (contrast/brightness) sharp on high-DPI and zoomed pages.
 - `npm run build` produces an optimized static bundle in `dist/` for deployment or Docker.
+
+## Versioning & Releases
+
+The game version lives in `package.json` (`version` field). Each `npm start` / `npm run build` run generates `src/build-info.generated.ts` with:
+
+| Field | Meaning |
+|---|---|
+| `version` | SemVer from `package.json` (e.g. `1.0.0`) |
+| `gitSha` | Short commit hash — identifies what is on GitHub |
+| `gitDirty` | `*` suffix if there are uncommitted local changes |
+| `mode` | `development` (local) or `production` (build) |
+| `channel` | `local`, `release`, or `itch` |
+| `buildId` | UTC timestamp of the build (e.g. `20250701-143022`) |
+
+**Where to look:**
+
+- **Local dev** (`npm start`) — bottom-left overlay: `v1.0.0 · dev · abc1234*` and the same string in the browser console. `*` means uncommitted changes.
+- **GitHub** — check `package.json` version + `git log -1 --oneline`. Tag releases as `v1.0.0` to match the version field.
+- **itch.io build** — run `npm run build:itch`, then open `dist/BUILD.txt` or the in-game label: `v1.0.0 · itch · abc1234 · 20250701-143022`.
+
+### Before a git commit
+
+1. Make sure the game runs: `npm start`.
+2. Bump version **only** when preparing a release or a public itch.io upload:
+   ```bash
+   npm run version:patch   # 1.0.0 → 1.0.1 (bugfix)
+   npm run version:minor   # 1.0.0 → 1.1.0 (new feature)
+   npm run version:major   # 1.0.0 → 2.0.0 (breaking change)
+   ```
+3. Commit code **and** the updated `package.json` / `package-lock.json` together.
+4. For a release, add a git tag after the commit:
+   ```bash
+   git tag v1.0.1
+   ```
+
+Regular WIP commits do **not** require a version bump.
+
+### Before pushing to GitHub
+
+1. Commit (or stash) all changes — a dirty working tree shows `*` in the dev label and is harder to trace.
+2. If this push is a **release**, ensure the version was bumped and the tag exists:
+   ```bash
+   git tag v1.0.1        # if not created yet
+   git push origin main
+   git push origin v1.0.1
+   ```
+3. For everyday pushes, just `git push` — no version bump needed.
+
+### Before uploading to itch.io
+
+1. **Commit and push** the code you are shipping (so `gitSha` in the build matches GitHub).
+2. **Bump version** if this upload is a new public release (`npm run version:patch` or `minor`).
+3. Build the itch bundle:
+   ```bash
+   npm run build:itch
+   ```
+4. Verify `dist/BUILD.txt` — version, git hash, and build ID should look correct.
+5. Open `dist/index.html` locally (or use `npx serve dist`) and check the version label in the bottom-left corner.
+6. Upload the **entire** `dist/` folder to itch.io (HTML project).
+7. Tag the release on GitHub if you bumped the version:
+   ```bash
+   git tag v1.0.1
+   git push origin v1.0.1
+   ```
 
 ## Roadmap (planned)
 

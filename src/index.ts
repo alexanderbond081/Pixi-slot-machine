@@ -1,5 +1,5 @@
 
-import { Application, Container, Graphics, Assets } from 'pixi.js';
+import { Application, Container, Graphics, Assets, Filter } from 'pixi.js';
 import * as PIXI from 'pixi.js';
 
 import { gsap } from 'gsap';
@@ -10,7 +10,7 @@ import { LoadingScene } from './scenes/loading-scene';
 import { MainGameScene } from './scenes/main-game-scene';
 import { PreloadScene } from './scenes/preload-scene';
 import { SlotMachineModel } from './game/slot-machine-model';
-import { Filter } from 'pixi.js';
+import { createVersionLabel, logBuildInfo } from './version';
 
 Filter.defaultOptions.resolution = 'inherit';
 gsap.registerPlugin(PixiPlugin);
@@ -34,6 +34,7 @@ let isPaused = true;
 let inUse = false;
 
 async function initGame(): Promise<void> {
+	logBuildInfo();
 
 	window.addEventListener('resize', () => {
 		const dpr = window.devicePixelRatio || 1;
@@ -57,6 +58,7 @@ async function initGame(): Promise<void> {
 	app.stage.addChild(gameLayer);
 	app.stage.addChild(hudLayer);
 	app.stage.addChild(uiOverlay);
+	initVersionLabel();
 	initFadeEffect();
 
 	await Assets.init({ manifest: 'assets/manifest.json' });
@@ -125,6 +127,13 @@ async function changeScene(newScene: Scene): Promise<void> {
 		currentScene = newScene;
 		await fadeEffect(100, false, 0x00);
 	}
+}
+
+function initVersionLabel(): void {
+	const versionLabel = createVersionLabel();
+	versionLabel.x = 8;
+	versionLabel.y = gameHeight - versionLabel.height - 8;
+	hudLayer.addChild(versionLabel);
 }
 
 function initFadeEffect(): void {

@@ -7,7 +7,9 @@
 					"alias": "logo",
 					"src": "assets/preload/random-logo.svg",
 					"data": {
-						"resolution": 8
+						"resolution": 8,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
 					}
 				},
 				{
