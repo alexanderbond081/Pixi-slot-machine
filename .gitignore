@@ -3,6 +3,8 @@ node_modules/
 
 # Build output
 dist/
+build/
+src/build-info.generated.ts
 
 # Environment and secrets
 .env
