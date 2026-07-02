@@ -1,28 +1,27 @@
-export interface ISpinResponse {
-	isWin: boolean;
-	symbols: any[];
-}
+import { ISpinResponse } from './slot-game-interface';
+import { SlotMachineClient } from './slot-machine-client';
+
+const LEGACY_GAME_ID = 'slot_reels_3x3';
+const LEGACY_BET = 1;
 
 export class SlotMachineModel {
-	// Simulates a game server
-	// !! under construction	
+	private readonly client: SlotMachineClient;
+	private initialized = false;
 
-	readonly keys: any[] = [1, 2, 3];
-	private readonly totalSymbols = 3;
-	private readonly totalReels = 3;
+	/** @deprecated Use symbol keys from init response — kept for index.ts compatibility */
+	public readonly keys: number[] = [1, 2, 3];
 
+	constructor(client?: SlotMachineClient) {
+		this.client = client ?? new SlotMachineClient();
+	}
+
+	/** @deprecated Use SlotMachineClient.fetchSpin — kept for index.ts compatibility */
 	public async fetchSpinResult(): Promise<ISpinResponse> {
-		await new Promise(resolve => setTimeout(resolve, 1000));
-
-		const symbols: any[] = [];
-
-		for (let i = 0; i < this.totalReels; i++) {
-			const index: number = Math.floor(Math.random() * this.totalSymbols);
-			symbols.push(this.keys[index]);
+		if (!this.initialized) {
+			await this.client.fetchInit({ token: 'mock', game_id: LEGACY_GAME_ID });
+			this.initialized = true;
 		}
 
-		const isWin = symbols.every(val => val === symbols[0]);
-
-		return { isWin, symbols };
+		return this.client.fetchSpin({ bet: LEGACY_BET });
 	}
 }

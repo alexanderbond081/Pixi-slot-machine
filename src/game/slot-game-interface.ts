@@ -1,0 +1,79 @@
+import { z } from 'zod';
+
+const nonNegativeInt = z.number().int().nonnegative();
+const nonEmptyString = z.string().min(1);
+
+// player object
+export interface IPlayer {
+	id: string;
+	userName: string;
+}
+
+export const PlayerScheme = z.object({
+	id: nonEmptyString,
+	userName: nonEmptyString,
+});
+
+// wallet object
+export interface IWallet {
+	balance: number;
+	currency: string; // ISO 4217
+	decimals: number;
+}
+
+export const WalletScheme = z.object({
+	balance: nonNegativeInt,
+	currency: nonEmptyString,
+	decimals: nonNegativeInt,
+});
+
+// init query objects
+export interface IInitQuery {
+	token: string;
+	game_id: string;
+}
+
+export const InitQueryScheme = z.object({
+	token: nonEmptyString,
+	game_id: nonEmptyString,
+});
+
+export interface IInitResponse {
+	player: IPlayer;
+	wallet: IWallet;
+	game_id: string;
+	symbols: string[][];
+	error?: string;
+}
+
+export const InitResponseScheme = z.object({
+	player: PlayerScheme,
+	wallet: WalletScheme,
+	game_id: nonEmptyString,
+	symbols: z.array(z.array(nonEmptyString)),
+	error: z.string().optional(),
+});
+
+// spin query objects
+export interface ISpinQuery {
+	bet: number;
+}
+
+export const SpinQueryScheme = z.object({
+	bet: nonNegativeInt,
+});
+
+export interface ISpinResponse {
+	isWin: boolean;
+	wallet: IWallet;
+	symbols: string[][];
+	error?: string;
+}
+
+export const SpinResponseScheme = z.object({
+	isWin: z.boolean(),
+	wallet: WalletScheme,
+	symbols: z.array(z.array(nonEmptyString)),
+	error: z.string().optional(),
+});
+
