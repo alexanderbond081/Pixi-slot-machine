@@ -17,7 +17,7 @@ export const PlayerScheme = z.object({
 // wallet object
 export interface IWallet {
 	balance: number;
-	currency: string; // ISO 4217
+	currency: string; // normally it should be ISO 4217, but in current game implementation it's just coins
 	decimals: number;
 }
 

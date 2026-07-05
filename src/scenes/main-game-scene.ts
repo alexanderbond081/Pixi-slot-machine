@@ -7,8 +7,6 @@ import { Reel, ReelState } from '../components/reel';
 import { Spine } from '@esotericsoftware/spine-pixi-v8';
 import { SoundManager } from '../managers/sound-manager';
 import { SpineDisplay } from '../components/spine-display';
-import { UIButton } from '../components/ui-button';
-import { HighlightDecoration } from '../components/highlight-decoration';
 
 export class MainGameScene extends Scene {
 	private bgSprite!: Sprite;
@@ -17,10 +15,6 @@ export class MainGameScene extends Scene {
 	private theMachine: Container = new Container();
 	private leverAnimated!: AnimatedSprite;
 	private leverButton!: Graphics;
-
-	private soundButtonSheet!: Spritesheet;
-	private soundButton!: UIButton;
-	private isClickBlocked: boolean = false;
 
 	private flies: AnotherFly[] = [];
 	private fliesContainer!: ParticleContainer;
@@ -50,7 +44,6 @@ export class MainGameScene extends Scene {
 		await this.addFrame();
 		await this.addLeverButton();
 		await this.addCoins();
-		await this.addSoundButton();
 
 		SoundManager.playMusic('bg-music-fantasy');
 		SoundManager.playAmbience('ambience');
@@ -67,7 +60,7 @@ export class MainGameScene extends Scene {
 		this.leverPlayAnimation('pull', 0.3);
 		SoundManager.playSound('lever-sfx');
 		this.owl.playAnimation('down', 1, true);
-		await new Promise(resolve => setTimeout(resolve, 500));
+		await delay(500);
 	}
 
 	public async stopSpinning(reelSymbols: any[]): Promise<void> {
@@ -93,7 +86,7 @@ export class MainGameScene extends Scene {
 			const symbol = reelSymbols[i] ?? reelSymbols[0];
 
 			if (i > 0) {
-				await new Promise(resolve => setTimeout(resolve, 700));
+				await delay(700);
 			}
 
 			this.reels[i].stopSpin(symbol);
@@ -106,8 +99,8 @@ export class MainGameScene extends Scene {
 
 	public async playBlocked(): Promise<void> {
 		this.leverPlayAnimation('blocked', 0.3);
-		// !! await leverPlayAnimation to be implemented
-		await new Promise(resolve => setTimeout(resolve, 500));
+		await delay(500);
+		this.owlAddStress(1);
 	}
 
 	public async playWin(): Promise<void> {
@@ -120,7 +113,7 @@ export class MainGameScene extends Scene {
 	}
 
 	public async playLost(): Promise<void> {
-		this.owlAddStress();
+		this.owlAddStress(0.5);
 	}
 
 	public isSpinning(): boolean {
@@ -282,9 +275,9 @@ export class MainGameScene extends Scene {
 	private async playCoinsSpread(): Promise<void> {
 		for (const coin of this.coins) {
 			coin.throw(this.randomiseCoinThrowTrajectory());
-			await new Promise(resolve => setTimeout(resolve, 100));
+			await delay(100);
 		}
-		await new Promise(resolve => setTimeout(resolve, 300));
+		await delay(300);
 	}
 
 	private async addLever(): Promise<void> {
@@ -333,7 +326,7 @@ export class MainGameScene extends Scene {
 		this.owl.eventMode = 'static';
 		this.owl.cursor = 'pointer';
 		this.owl.on('pointerdown', () => {
-			this.owlAddStress(0.5);
+			this.owlAddStress(0.1);
 		});
 
 		this.addChild(this.owl);
@@ -351,6 +344,8 @@ export class MainGameScene extends Scene {
 		if ((Math.random() * 0.4 + this.owlStress * 0.2) > 0.99) {
 			this.owl.playAnimation('up', 1, true, 1);
 			SoundManager.playSound('owl-voice');
+			this.owlDropCoin();
+			this.emit('cheatACoin');
 			this.owlStress = 0;
 		} else {
 			this.owl.playAnimation('blink', (amount < 1) ? 2 : 0.2, false, 3.5);
@@ -358,35 +353,21 @@ export class MainGameScene extends Scene {
 		}
 	}
 
-	private async addSoundButton(): Promise<void> {
-		this.soundButtonSheet = await Assets.load<Spritesheet>('sound-button-brown');
-		const decorator = new HighlightDecoration(0.8);
-		this.soundButton = new UIButton(this.soundButtonSheet, 'sound-on', 42, 42, decorator);
-		this.adjustSoundButton();
-		this.addChild(this.soundButton);
-
-		this.soundButton.on('pointertap', () => {
-			if (this.isClickBlocked) return;
-
-			if (SoundManager.toggleGlobal()) {
-				this.soundButton.setTexture('sound-off');
-			} else {
-				this.soundButton.setTexture('sound-on');
-			}
-
-			this.isClickBlocked = true;
-			gsap.delayedCall(0.15, () => {
-				this.isClickBlocked = false;
-			});
-		});
-	}
-
-	private adjustSoundButton(): void {
-		const baseSize = this.soundButton.baseWidth;
+	private owlDropCoin(): void {
 		const scale = this.calcScale();
-		this.soundButton.x = (24 + baseSize / 2) * scale;
-		this.soundButton.y = (20 + baseSize / 2) * scale;
-		this.soundButton.adjustScale(scale, scale);
+		const x = this.owl.x;
+		const y = this.owl.y;
+		this.coins[0].throw({
+			x,
+			y,
+			scale: 0.1 * scale,
+			speedX: 0,
+			speedY: 0,
+			speedScale: 0,
+			spinSpeed: 0,
+			floor: Scene.viewportHeight,
+			gravity: 0.98 * scale
+		});
 	}
 
 	private async addCoins(): Promise<void> {
@@ -408,6 +389,5 @@ export class MainGameScene extends Scene {
 		this.adjustSpineAnimation();
 		this.adjustFlyes();
 		this.adjustTheMachine();
-		this.adjustSoundButton();
 	}
 }
