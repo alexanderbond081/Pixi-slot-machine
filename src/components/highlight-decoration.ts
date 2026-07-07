@@ -56,7 +56,11 @@ export class HighlightDecoration extends MouseActionDecoration {
 	protected onPointerDown(host: Decoratable): void {
 		gsap.to(host.animationTarget,
 			{
-				pixi: { tint: "#bbbbbb" },
+				pixi: {
+					tint: "#bbbbbb",
+					//scaleX: host.actualScaleX * this.scaleEffect,
+					//scaleY: host.actualScaleY * this.scaleEffect,
+				},
 				duration: 0.1,
 				overwrite: 'auto',
 			});
@@ -79,7 +83,7 @@ export class HighlightDecoration extends MouseActionDecoration {
 					scaleX: host.actualScaleX,
 					scaleY: host.actualScaleY,
 				},
-				duration: 0.666,
+				duration: 0.5,
 				ease: "elastic.out(0.5, 0.3)",
 				overwrite: "auto",
 			});
@@ -95,7 +99,11 @@ export class HighlightDecoration extends MouseActionDecoration {
 	protected onPointerUpOutside(host: Decoratable): void {
 		gsap.to(host.animationTarget,
 			{
-				pixi: { tint: "#ffffff" },
+				pixi: {
+					tint: "#ffffff",
+					//scaleX: host.actualScaleX,
+					//scaleY: host.actualScaleY
+				},
 				duration: 0.1,
 				overwrite: "auto",
 			});

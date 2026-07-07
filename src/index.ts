@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Assets, Filter, Spritesheet, Text, TextStyle } from 'pixi.js';
+import { Application, Container, Graphics, Assets, Filter } from 'pixi.js';
 import * as PIXI from 'pixi.js';
 
 import { gsap } from 'gsap';
@@ -11,12 +11,10 @@ import { PreloadScene } from './scenes/preload-scene';
 import { SlotMachineClient } from './game/slot-machine-client';
 import { IInitResponse, ISpinResponse, IWallet } from './game/slot-game-interface';
 import { GameSceneCatalogEntry, gameSceneCatalog } from './managers/scenes-catalog';
-import { SoundManager } from './managers/sound-manager';
-import { UIButton } from './components/ui-button';
-import { HighlightDecoration } from './components/highlight-decoration';
 import { createVersionLabel, logBuildInfo } from './version';
 
 import './global-delay';
+import { GameHUD } from './hud/game-hud';
 
 Filter.defaultOptions.resolution = 'inherit';
 gsap.registerPlugin(PixiPlugin);
@@ -26,6 +24,7 @@ const MOCK_TOKEN = 'mock';
 
 const app = new Application();
 const gameClient = new SlotMachineClient();
+const gameHUD = new GameHUD();
 
 const gameLayer = new Container();
 const hudLayer = new Container(); // !! top level UI to be implemented
@@ -48,9 +47,6 @@ type PlayerState = {
 };
 
 let playerState: PlayerState = { wallet: { balance: 0, currency: 'coins', decimals: 0 } };
-
-let isHudSoundClickBlocked = false;
-let walletHudLabel: Text | null = null;
 
 async function initGame(): Promise<void> {
 	logBuildInfo();
@@ -95,15 +91,16 @@ async function initGame(): Promise<void> {
 	await Assets.loadBundle('preload');
 	await changeScene(new PreloadScene());
 	const loadCommonPromise = Assets.loadBundle('common');
-	await Promise.all([loadCommonPromise, delay(500)]);
+	await Promise.all([loadCommonPromise, delay(1000)]);
 	// no progress bar durin loading 'common', because there is no main menu and login screen yet
 
 	// load main game scene
 	await loadGameScene('main-scene');
 
 	// setup keys and window focus
-	app.canvas.setAttribute('tabindex', '0');
-	app.canvas.focus();
+	//app.canvas.setAttribute('tabindex', '0');
+	//app.canvas.focus();
+
 	window.addEventListener('keydown', onKeyDown);
 
 	isPaused = false;
@@ -233,23 +230,14 @@ function extractReelStopKeys(symbols: string[][]): number[] {
 	return symbols.map((reel) => Number(reel[1]));
 }
 
-function refreshWalletHud(): void {
-	// ??? AI generated
-	if (!walletHudLabel) {
-		return;
-	}
-
-	walletHudLabel.text = `${playerState.wallet.currency}: ${playerState.wallet.balance}`;
-}
-
 function updateWallet(wallet: IWallet): void {
 	playerState = { wallet: { ...wallet } };
-	refreshWalletHud();
+	gameHUD.updateWallet(wallet);
 }
 
 function changeWalletBalance(amount: number): void {
 	playerState.wallet.balance += amount;
-	refreshWalletHud();
+	gameHUD.updateWallet(playerState.wallet);
 }
 
 async function changeScene(newScene: Scene): Promise<void> {
@@ -278,75 +266,14 @@ async function changeScene(newScene: Scene): Promise<void> {
 	}
 }
 
-function createWalletBadge(width: number, height: number): Container {
-	// ??? AI generated
-	const badge = new Container();
-	const background = new Graphics();
-
-	background.roundRect(0, 0, width, height, 4);
-	background.fill({ color: '#333333', alpha: 0.8 });
-
-	walletHudLabel = new Text({
-		text: '--',
-		style: new TextStyle({
-			fontFamily: 'Arial, sans-serif',
-			fontSize: 22,
-			fill: 0xffffff,
-		}),
-	});
-
-	walletHudLabel.anchor.set(0.5);
-	walletHudLabel.x = width / 2;
-	walletHudLabel.y = height / 2;
-
-	badge.addChild(background);
-	badge.addChild(walletHudLabel);
-
-	return badge;
-}
-
 async function initHUD(): Promise<void> {
-	// !! AI generated
+	await gameHUD.init();
+	hudLayer.addChild(gameHUD);
 
 	const versionLabel = createVersionLabel();
 	versionLabel.x = 8;
 	versionLabel.y = gameHeight - versionLabel.height - 8;
 	hudLayer.addChild(versionLabel);
-
-	const scale = 1;
-	const soundButtonSheet = await Assets.load<Spritesheet>('sound-button-brown');
-	const decorator = new HighlightDecoration(0.8);
-	const size = 42;
-	const soundButton = new UIButton(soundButtonSheet, 'sound-on', size, size, decorator);
-	soundButton.x = (24 + size / 2) * scale;
-	soundButton.y = (20 + size / 2) * scale;
-	soundButton.adjustScale(scale, scale);
-	hudLayer.addChild(soundButton);
-
-	soundButton.on('pointertap', () => {
-		if (isHudSoundClickBlocked) {
-			return;
-		}
-
-		if (SoundManager.toggleGlobal()) {
-			soundButton.setTexture('sound-off');
-		} else {
-			soundButton.setTexture('sound-on');
-		}
-
-		isHudSoundClickBlocked = true;
-		gsap.delayedCall(0.15, () => {
-			isHudSoundClickBlocked = false;
-		});
-	});
-
-	const walletBadge = createWalletBadge(160, 42);
-	walletBadge.x = (90) * scale;
-	walletBadge.y = (20) * scale;
-	walletBadge.scale.set(scale);
-	hudLayer.addChild(walletBadge);
-
-	refreshWalletHud();
 }
 
 function initFadeEffect(): void {

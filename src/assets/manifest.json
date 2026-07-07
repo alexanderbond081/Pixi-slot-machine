@@ -5,22 +5,97 @@
 			"assets": [
 				{
 					"alias": "logo",
-					"src": "assets/preload/random-logo.svg",
+					"src": "assets/preload/logo.png",
 					"data": {
-						"resolution": 8,
+						"resolution": 3,
 						"autoGenerateMipmaps": true,
 						"scaleMode": "linear"
 					}
 				},
 				{
 					"alias": "title",
-					"src": "assets/preload/random-title.png"
+					"src": "assets/preload/title.png"
 				}
 			]
 		},
 		{
 			"name": "common",
-			"assets": []
+			"assets": [
+				{
+					"alias": "button-sound",
+					"src": "assets/images/button-sound.json",
+					"data": {
+						"resolution": 1,
+						"textureOptions": {
+							"autoGenerateMipmaps": true,
+							"scaleMode": "linear"
+						}
+					}
+				},
+				{
+					"alias": "button-info",
+					"src": "assets/images/button-info.png",
+					"data": {
+						"resolution": 1,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
+					}
+				},
+				{
+					"alias": "button-coins",
+					"src": "assets/images/button-coins.png",
+					"data": {
+						"resolution": 1,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
+					}
+				},
+				{
+					"alias": "button-plus",
+					"src": "assets/images/button-plus.png",
+					"data": {
+						"resolution": 1,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
+					}
+				},
+				{
+					"alias": "button-minus",
+					"src": "assets/images/button-minus.png",
+					"data": {
+						"resolution": 1,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
+					}
+				},
+				{
+					"alias": "panel-balance",
+					"src": "assets/images/panel-balance.png",
+					"data": {
+						"resolution": 1,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
+					}
+				},
+				{
+					"alias": "panel-bet",
+					"src": "assets/images/panel-bet.png",
+					"data": {
+						"resolution": 1,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
+					}
+				},
+				{
+					"alias": "ui-panel",
+					"src": "assets/images/ui-panel.png",
+					"data": {
+						"resolution": 1,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
+					}
+				}
+			]
 		},
 		{
 			"name": "main-scene",

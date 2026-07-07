@@ -168,9 +168,9 @@ export class MainGameScene extends Scene {
 	}
 
 	private adjustLogo(): void {
-		this.logoSprite.scale = 0.4 * this.calcScale();
-		this.logoSprite.x = Scene.viewportWidth - this.logoSprite.width - 3 * this.calcScale();
-		this.logoSprite.y = Scene.viewportHeight - this.logoSprite.height;
+		this.logoSprite.scale = 0.3 * this.calcScale();
+		this.logoSprite.x = 5 * this.calcScale();
+		this.logoSprite.y = 6 * this.calcScale();
 	}
 
 	private async addFlyes(): Promise<void> {
@@ -241,7 +241,7 @@ export class MainGameScene extends Scene {
 		this.theMachine.scale = scale;
 		this.theMachine.x = (Scene.viewportWidth - this.theMachine.width) * 0.5;
 		// the slot machine frame has a shadow on it's bottom - no need to shift it from the edge
-		this.theMachine.y = (Scene.viewportHeight - this.theMachine.height);
+		this.theMachine.y = (Scene.viewportHeight - this.theMachine.height) * 0.6;
 	}
 
 	private leverPlayAnimation(name: string = 'idle', speed: number = 0.2): void {

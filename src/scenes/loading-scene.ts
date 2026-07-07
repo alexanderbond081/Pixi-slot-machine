@@ -38,9 +38,9 @@ export class LoadingScene extends Scene {
 	}
 
 	private adjustLogo(): void {
-		this.logoSprite.scale = 0.5 * this.calcScale();
-		this.logoSprite.x = Scene.viewportWidth - this.logoSprite.width * 1.5;
-		this.logoSprite.y = this.logoSprite.height * 0.3;
+		this.logoSprite.scale = 0.4 * this.calcScale();
+		this.logoSprite.x = Scene.viewportWidth - this.logoSprite.width * 1.2;
+		this.logoSprite.y = this.logoSprite.height * 0.2;
 	}
 
 	private async addTitle(): Promise<void> {

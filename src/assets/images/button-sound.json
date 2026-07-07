@@ -1,0 +1,32 @@
+{
+	"frames": {
+		"sound-on": {
+			"frame": {
+				"x": 0,
+				"y": 0,
+				"w": 115,
+				"h": 115
+			}
+		},
+		"sound-off": {
+			"frame": {
+				"x": 116,
+				"y": 0,
+				"w": 115,
+				"h": 115
+			}
+		}
+	},
+	"animations": {
+		"on": [
+			"sound-on"
+		],
+		"off": [
+			"sound-off"
+		]
+	},
+	"meta": {
+		"image": "button-sound.png",
+		"scale": "1"
+	}
+}
