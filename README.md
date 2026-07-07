@@ -181,6 +181,12 @@ This demo uses third-party assets for demonstration purposes. Before any commerc
 - **AI-Generated Content**:
   Some graphics in this demo were created or refined using AI image generation tools.
 
+## Branding & Trademarks
+
+The **Fairy Blob Games** name, logo (`src/assets/preload/logo.png`), domain [fairyblobgames.com](https://fairyblobgames.com), and related branding are © Aliaksandr Bandarenka. All rights reserved.
+
+They are **not** licensed under the ISC License and may not be copied, modified, or used in other projects, products, or services without prior written permission.
+
 ## License
 
 ### Project Code
@@ -189,4 +195,4 @@ The source code of this project is licensed under the **ISC License**. You are f
 See the `LICENSE` file in the root directory for the full text.
 
 ### Assets License
-The ISC license applies **only to the source code** created for this project. It does not cover the third-party assets (animations, images, and audio tracks) listed in the Credits section above. These assets remain the property of their respective owners and are subject to their own licensing terms.
+The ISC license applies **only to the source code** created for this project. It does not cover the third-party assets (animations, images, and audio tracks) listed in the Credits section above, nor the **Fairy Blob Games** branding listed in the Branding & Trademarks section. These materials remain the property of their respective owners and are subject to their own licensing terms.
