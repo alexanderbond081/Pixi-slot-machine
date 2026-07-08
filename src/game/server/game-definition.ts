@@ -1,10 +1,20 @@
 /** symbols[reelIndex][rowIndex] — top (0), middle payline (1), bottom (2) */
 export type ReelMatrix = string[][];
 
+export interface MiddleRowPaytable {
+	readonly tripleMultipliers: Readonly<Record<string, number>>;
+}
+
+export interface SpinOutcome {
+	isWin: boolean;
+	winMultiplier: number;
+}
+
 export interface GameDefinition {
 	readonly gameId: string;
+	readonly maxBet: number;
+	readonly paytable: MiddleRowPaytable;
 	createInitialMatrix(): ReelMatrix;
 	rollMatrix(): ReelMatrix;
-	isWin(matrix: ReelMatrix): boolean;
-	getWinPayout(): number;
+	evaluatePayline(matrix: ReelMatrix): SpinOutcome;
 }

@@ -14,13 +14,11 @@ export class SlotMachineClient {
 
 	public async fetchInit(query: IInitQuery): Promise<IInitResponse> {
 		const response = await this.server.handleInit(query);
-		console.log(response); //!! debug
 		return InitResponseScheme.parse(response);
 	}
 
 	public async fetchSpin(query: ISpinQuery): Promise<ISpinResponse> {
 		const response = await this.server.handleSpin(query);
-		console.log(response); //!! debug
 		return SpinResponseScheme.parse(response);
 	}
 

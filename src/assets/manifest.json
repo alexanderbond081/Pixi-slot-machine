@@ -162,12 +162,20 @@
 					"src": "assets/sounds/Casino-game-mechanical-lever-pull.mp3"
 				},
 				{
+					"alias": "lever-blocked",
+					"src": "assets/sounds/Casino-game-mechanical-lever-blocked.mp3"
+				},
+				{
 					"alias": "reel-spin",
 					"src": "assets/sounds/alex_jauk-air-vent-ambience-noise-short.mp3"
 				},
 				{
 					"alias": "slot-in",
 					"src": "assets/sounds/freesound_community-slot-in.mp3"
+				},
+				{
+					"alias": "button-pressed",
+					"src": "assets/sounds/button-pressed.mp3"
 				},
 				{
 					"alias": "win-sfx",

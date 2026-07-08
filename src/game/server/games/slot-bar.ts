@@ -1,5 +1,5 @@
 import { GameDefinition } from '../game-definition';
-import { buildMatrixFromStrips, isMiddleRowWin, rollStopKeys } from './reel-utils';
+import { buildMatrixFromStrips, createMiddleRowPaylineEvaluator, rollStopKeys } from './reel-utils';
 
 const config = {
 	gameId: 'slot_bar',
@@ -9,11 +9,22 @@ const config = {
 		['Z', 'Y', 'X'],
 	],
 	initialStopKeys: ['X', 'Y', 'Z'],
-	winPayout: 15,
+	maxBet: 10,
+	paytable: {
+		tripleMultipliers: {
+			X: 4,
+			Y: 8,
+			Z: 12,
+		},
+	},
 } as const;
+
+const evaluateMiddleRowPayline = createMiddleRowPaylineEvaluator(config.paytable);
 
 export const slotBar: GameDefinition = {
 	gameId: config.gameId,
+	maxBet: config.maxBet,
+	paytable: config.paytable,
 
 	createInitialMatrix(): string[][] {
 		return buildMatrixFromStrips(config.reelStrips, config.initialStopKeys);
@@ -24,11 +35,7 @@ export const slotBar: GameDefinition = {
 		return buildMatrixFromStrips(config.reelStrips, stopKeys);
 	},
 
-	isWin(matrix: string[][]): boolean {
-		return isMiddleRowWin(matrix);
-	},
-
-	getWinPayout(): number {
-		return config.winPayout;
+	evaluatePayline(matrix: string[][]): { isWin: boolean; winMultiplier: number } {
+		return evaluateMiddleRowPayline(matrix);
 	},
 };

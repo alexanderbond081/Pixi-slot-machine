@@ -14,7 +14,7 @@ const MockGameSessionScheme = z.object({
 
 export type MockGameSession = z.infer<typeof MockGameSessionScheme>;
 
-/** @deprecated Legacy single-key snapshot — used only for one-time migration */
+// Legacy single-key snapshot — used only for one-time migration.
 const MockLegacyPersistedStateScheme = MockGameSessionScheme.extend({
 	wallet: WalletScheme,
 });

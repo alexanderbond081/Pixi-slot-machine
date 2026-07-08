@@ -1,5 +1,5 @@
 import { GameDefinition } from '../game-definition';
-import { buildMatrixFromStrips, isMiddleRowWin, rollStopKeys } from './reel-utils';
+import { buildMatrixFromStrips, createMiddleRowPaylineEvaluator, rollStopKeys } from './reel-utils';
 
 /** Matches main-game-scene reel orders [[0,1,2],[1,0,2],[2,1,0]] with symbol keys 1,2,3 */
 const config = {
@@ -10,11 +10,23 @@ const config = {
 		['3', '2', '1'],
 	],
 	initialStopKeys: ['1', '2', '3'],
-	winPayout: 10,
+	maxBet: 10,
+	// Triple-only paytable — RTP ≈ (4+8+12)/27 ≈ 89% (win chance 1/9 per spin)
+	paytable: {
+		tripleMultipliers: {
+			'1': 4, // cherry
+			'2': 8, // bell
+			'3': 12, // seven
+		},
+	},
 } as const;
+
+const evaluateMiddleRowPayline = createMiddleRowPaylineEvaluator(config.paytable);
 
 export const slotReels3x3: GameDefinition = {
 	gameId: config.gameId,
+	maxBet: config.maxBet,
+	paytable: config.paytable,
 
 	createInitialMatrix(): string[][] {
 		return buildMatrixFromStrips(config.reelStrips, config.initialStopKeys);
@@ -25,11 +37,7 @@ export const slotReels3x3: GameDefinition = {
 		return buildMatrixFromStrips(config.reelStrips, stopKeys);
 	},
 
-	isWin(matrix: string[][]): boolean {
-		return isMiddleRowWin(matrix);
-	},
-
-	getWinPayout(): number {
-		return config.winPayout;
+	evaluatePayline(matrix: string[][]): { isWin: boolean; winMultiplier: number } {
+		return evaluateMiddleRowPayline(matrix);
 	},
 };

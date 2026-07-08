@@ -42,6 +42,7 @@ export interface IInitResponse {
 	player: IPlayer;
 	wallet: IWallet;
 	game_id: string;
+	max_bet: number;
 	symbols: string[][];
 	error?: string;
 }
@@ -50,6 +51,7 @@ export const InitResponseScheme = z.object({
 	player: PlayerScheme,
 	wallet: WalletScheme,
 	game_id: nonEmptyString,
+	max_bet: nonNegativeInt,
 	symbols: z.array(z.array(nonEmptyString)),
 	error: z.string().optional(),
 });
@@ -65,6 +67,7 @@ export const SpinQueryScheme = z.object({
 
 export interface ISpinResponse {
 	isWin: boolean;
+	winAmount: number;
 	wallet: IWallet;
 	symbols: string[][];
 	error?: string;
@@ -72,6 +75,7 @@ export interface ISpinResponse {
 
 export const SpinResponseScheme = z.object({
 	isWin: z.boolean(),
+	winAmount: nonNegativeInt,
 	wallet: WalletScheme,
 	symbols: z.array(z.array(nonEmptyString)),
 	error: z.string().optional(),

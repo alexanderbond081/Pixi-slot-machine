@@ -7,6 +7,7 @@ import { Reel, ReelState } from '../components/reel';
 import { Spine } from '@esotericsoftware/spine-pixi-v8';
 import { SoundManager } from '../managers/sound-manager';
 import { SpineDisplay } from '../components/spine-display';
+import { number } from 'zod';
 
 export class MainGameScene extends Scene {
 	private bgSprite!: Sprite;
@@ -74,9 +75,13 @@ export class MainGameScene extends Scene {
 					resolve();
 					return;
 				}
-				reel.once('reelStopped', () => {
+
+				reel.once('reelClicked', () => {
 					SoundManager.stopSound('reel-spin');
 					SoundManager.playSound('slot-in');
+				});
+
+				reel.once('reelStopped', () => {
 					resolve();
 				});
 			}),
@@ -98,17 +103,21 @@ export class MainGameScene extends Scene {
 	}
 
 	public async playBlocked(): Promise<void> {
+		SoundManager.playSound('lever-blocked', 3);
 		this.leverPlayAnimation('blocked', 0.3);
 		await delay(500);
 		this.owlAddStress(1);
 	}
 
-	public async playWin(): Promise<void> {
+	public async playWin(winAmount: number): Promise<void> {
 		SoundManager.playSound('win-sfx');
-		SoundManager.playSound('coin-spray-sfx');
 		this.owl.playAnimation('left', 1, true);
 		this.owlStress = 0;
-		await this.playCoinsSpread();
+		for (let i = winAmount; i > 0; i -= 10) {
+			SoundManager.playSound('coin-spray-sfx', 3);
+			await this.playCoinsSpread(i < 10 ? i : 10);
+		}
+
 		this.owl.playAnimation('blink', 2, false);
 	}
 
@@ -227,7 +236,6 @@ export class MainGameScene extends Scene {
 		};
 	}
 
-
 	private async addFrame(): Promise<void> {
 		const frameTexture = await Assets.load(`reels-frame`);
 		const frameSprite = new Sprite(frameTexture);
@@ -272,12 +280,14 @@ export class MainGameScene extends Scene {
 		};
 	}
 
-	private async playCoinsSpread(): Promise<void> {
+	private async playCoinsSpread(count: number = 10): Promise<void> {
+		let i = count;
 		for (const coin of this.coins) {
 			coin.throw(this.randomiseCoinThrowTrajectory());
 			await delay(100);
+			if (--i <= 0) break;
 		}
-		await delay(300);
+		await delay(100);
 	}
 
 	private async addLever(): Promise<void> {

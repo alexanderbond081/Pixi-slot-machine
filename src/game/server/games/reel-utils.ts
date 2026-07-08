@@ -1,4 +1,4 @@
-import { ReelMatrix } from '../game-definition';
+import { MiddleRowPaytable, ReelMatrix, SpinOutcome } from '../game-definition';
 
 export const buildMatrixFromStrips = (
 	reelStrips: readonly (readonly string[])[],
@@ -18,9 +18,25 @@ export const getMiddleRow = (matrix: ReelMatrix): string[] => {
 	return matrix.map((reel) => reel[1]);
 };
 
-export const isMiddleRowWin = (matrix: ReelMatrix): boolean => {
-	const middleRow = getMiddleRow(matrix);
-	return middleRow.every((symbol) => symbol === middleRow[0]);
+export const evaluateMiddleRowPaytable = (matrix: ReelMatrix, paytable: MiddleRowPaytable): number => {
+	const [left, middle, right] = getMiddleRow(matrix);
+
+	if (left === middle && middle === right) {
+		return paytable.tripleMultipliers[left] ?? 0;
+	}
+
+	return 0;
+};
+
+export const createMiddleRowPaylineEvaluator = (paytable: MiddleRowPaytable): ((matrix: ReelMatrix) => SpinOutcome) => {
+	return (matrix: ReelMatrix): SpinOutcome => {
+		const winMultiplier = evaluateMiddleRowPaytable(matrix, paytable);
+
+		return {
+			isWin: winMultiplier > 0,
+			winMultiplier,
+		};
+	};
 };
 
 const rotateStripToMiddle = (strip: readonly string[], middleSymbol: string): string[] => {

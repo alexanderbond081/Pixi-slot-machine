@@ -15,12 +15,18 @@ import { logBuildInfo } from './version';
 
 import './global-delay';
 import { GameHUD } from './hud/game-hud';
+import { WalletUpdateOptions } from './hud/hud';
 
 Filter.defaultOptions.resolution = 'inherit';
 gsap.registerPlugin(PixiPlugin);
 PixiPlugin.registerPIXI(PIXI);
 
 const MOCK_TOKEN = 'mock';
+const DEFAULT_MIN_BET = 1;
+const DEFAULT_MAX_BET = 10;
+const BET_BALANCE_DURATION_MS = 350;
+const COIN_WAVE_DELAY_MS = 100;
+const COIN_WAVE_TAIL_DELAY_MS = 100;
 
 const app = new Application();
 const gameClient = new SlotMachineClient();
@@ -47,6 +53,7 @@ type PlayerState = {
 };
 
 let playerState: PlayerState = { wallet: { balance: 0, currency: 'coins', decimals: 0 } };
+let currentBet = DEFAULT_MIN_BET;
 
 async function initGame(): Promise<void> {
 	logBuildInfo();
@@ -133,10 +140,11 @@ async function loadGameScene(sceneId: string): Promise<void> {
 	isServerConnected = serverInit.connected;
 
 	if (serverInit.connected && serverInit.response) {
-		updateWallet(serverInit.response.wallet);
+		updateWallet(serverInit.response.wallet, { instant: true });
 	}
 
 	await initHUD();
+	setupBetControls(serverInit.response);
 
 	const gameScene = createGameScene(entry, serverInit.response);
 
@@ -230,15 +238,21 @@ function extractReelStopKeys(symbols: string[][]): number[] {
 	return symbols.map((reel) => Number(reel[1]));
 }
 
-function updateWallet(wallet: IWallet): void {
+function updateWallet(wallet: IWallet, options?: WalletUpdateOptions): void {
 	playerState = { wallet: { ...wallet } };
-	gameHUD.updateWallet(wallet);
+	gameHUD.updateWallet(wallet, options);
 }
 
-function changeWalletBalance(amount: number): void {
+function changeWalletBalance(amount: number, options?: WalletUpdateOptions): void {
 	playerState.wallet.balance += amount;
-	gameHUD.updateWallet(playerState.wallet);
+	gameHUD.updateWallet(playerState.wallet, options);
 }
+
+const estimateWinBalanceDurationMs = (winAmount: number): number => {
+	const waves = Math.ceil(winAmount / 10);
+
+	return waves * (10 * COIN_WAVE_DELAY_MS + COIN_WAVE_TAIL_DELAY_MS);
+};
 
 async function changeScene(newScene: Scene): Promise<void> {
 	if (currentScene) {
@@ -268,7 +282,27 @@ async function changeScene(newScene: Scene): Promise<void> {
 
 async function initHUD(): Promise<void> {
 	await gameHUD.init();
-	hudLayer.addChild(gameHUD);
+
+	if (!hudLayer.children.includes(gameHUD)) {
+		hudLayer.addChild(gameHUD);
+	}
+
+	connectBetControls();
+}
+
+function setupBetControls(initResponse: IInitResponse | null): void {
+	const maxBet = initResponse?.max_bet ?? DEFAULT_MAX_BET;
+
+	gameHUD.setBetLimits(DEFAULT_MIN_BET, maxBet);
+	gameHUD.setBet(currentBet);
+	currentBet = Math.min(currentBet, maxBet);
+}
+
+function connectBetControls(): void {
+	gameHUD.off('bet-changed');
+	gameHUD.on('bet-changed', (bet: number) => {
+		currentBet = bet;
+	});
 }
 
 function initFadeEffect(): void {
@@ -305,18 +339,18 @@ async function onLeverTriggered(): Promise<void> {
 	try {
 		inUse = true;
 
-		if (playerState?.wallet.balance) {
-			changeWalletBalance(-1);
+		if (playerState.wallet.balance >= currentBet) {
+			changeWalletBalance(-currentBet, { durationMs: BET_BALANCE_DURATION_MS });
 			await currentScene.startSpinning();
-			const result = await gameClient.fetchSpin({ bet: 1 });
+			const result = await gameClient.fetchSpin({ bet: currentBet });
 			const reelStops = extractReelStopKeys(result.symbols);
 			await currentScene.stopSpinning(reelStops);
 
-			updateWallet(result.wallet);
-
 			if (result.isWin) {
-				await currentScene.playWin();
+				updateWallet(result.wallet, { durationMs: estimateWinBalanceDurationMs(result.winAmount) });
+				await currentScene.playWin(result.winAmount);
 			} else {
+				updateWallet(result.wallet, { instant: true });
 				await currentScene.playLost();
 			}
 
@@ -336,7 +370,7 @@ async function onCheatTriggered(): Promise<void> {
 		return;
 	}
 	gameClient.cheatCoins(1);
-	changeWalletBalance(1);
+	changeWalletBalance(1, { durationMs: 250 });
 }
 
 function onKeyDown(event: KeyboardEvent): void {

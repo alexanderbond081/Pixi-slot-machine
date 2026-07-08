@@ -6,7 +6,7 @@ import { IWallet } from '../game/slot-game-interface';
 import { SoundManager } from '../managers/sound-manager';
 import { Scene } from '../scenes/scene';
 import { createVersionLabel } from '../version';
-import { HUD } from './hud';
+import { HUD, WalletUpdateOptions } from './hud';
 
 const PANEL_MARGIN = 8;
 
@@ -35,6 +35,14 @@ const BALANCE_FONTSIZE = 24;
 const BALANCE_FONTCOLOR = '#FFB000';
 const BALANCE_FONT_GLOW = '#FF8C00';
 
+const DEFAULT_MIN_BET = 1;
+const BET_STEP = 1;
+const BET_BALANCE_DURATION_MS = 350;
+
+const clampBet = (value: number, minBet: number, maxBet: number): number => {
+	return Math.min(maxBet, Math.max(minBet, value));
+};
+
 export class GameHUD extends HUD {
 	private panelSprite!: Sprite;
 	private soundButton!: UIButton;
@@ -51,7 +59,11 @@ export class GameHUD extends HUD {
 	private balancePanel!: Sprite;
 	private balanceLabel!: Text;
 	private wallet: IWallet = { balance: 0, currency: 'coins', decimals: 0 };
-	private bet = 0;
+	private displayedBalance = 0;
+	private readonly balanceTicker = { value: 0 };
+	private minBet = DEFAULT_MIN_BET;
+	private maxBet = DEFAULT_MIN_BET;
+	private bet = DEFAULT_MIN_BET;
 
 	public async init(): Promise<void> {
 		await this.addPanel();
@@ -67,14 +79,25 @@ export class GameHUD extends HUD {
 
 	}
 
-	public updateWallet(wallet: IWallet): void {
+	public updateWallet(wallet: IWallet, options?: WalletUpdateOptions): void {
 		this.wallet = { ...wallet };
-		this.refreshBalanceLabel();
+
+		if (options?.instant || wallet.balance === this.displayedBalance) {
+			this.setDisplayedBalance(wallet.balance);
+			return;
+		}
+
+		this.animateDisplayedBalance(wallet.balance, options?.durationMs ?? BET_BALANCE_DURATION_MS);
 	}
 
-	public updateBet(bet: number): void {
-		this.bet = bet;
-		this.refreshBetLabel();
+	public setBetLimits(minBet: number, maxBet: number): void {
+		this.minBet = minBet;
+		this.maxBet = Math.max(minBet, maxBet);
+		this.applyBet(clampBet(this.bet, this.minBet, this.maxBet), false);
+	}
+
+	public setBet(bet: number): void {
+		this.applyBet(clampBet(bet, this.minBet, this.maxBet), false);
 	}
 
 	protected onResize(): void {
@@ -107,12 +130,14 @@ export class GameHUD extends HUD {
 		this.adjustSoundButton();
 		this.addChild(this.soundButton);
 
-		let isSoundClickBlocked = false;
+		let isClickBlocked = false;
 
 		this.soundButton.on('pointertap', () => {
-			if (isSoundClickBlocked) {
+			if (isClickBlocked) {
 				return;
 			}
+
+			SoundManager.playSound('button-pressed');
 
 			if (SoundManager.toggleGlobal()) {
 				this.soundButton.setFrame('sound-off');
@@ -120,9 +145,9 @@ export class GameHUD extends HUD {
 				this.soundButton.setFrame('sound-on');
 			}
 
-			isSoundClickBlocked = true;
+			isClickBlocked = true;
 			gsap.delayedCall(0.15, () => {
-				isSoundClickBlocked = false;
+				isClickBlocked = false;
 			});
 		});
 	}
@@ -187,8 +212,8 @@ export class GameHUD extends HUD {
 		this.refreshBetLabel();
 		this.addChild(this.betControls);
 		this.adjustBetControls();
-		this.bindButtonSignal(this.betMinusButton, 'bet-decrease');
-		this.bindButtonSignal(this.betPlusButton, 'bet-increase');
+		this.bindBetButton(this.betMinusButton, -BET_STEP);
+		this.bindBetButton(this.betPlusButton, BET_STEP);
 	}
 
 	private async addBalanceBadge(): Promise<void> {
@@ -232,6 +257,44 @@ export class GameHUD extends HUD {
 		});
 	}
 
+	private applyBet(bet: number, emitChange: boolean): void {
+		const hasChanged = this.bet !== bet;
+
+		this.bet = bet;
+		this.refreshBetLabel();
+
+		if (emitChange && hasChanged) {
+			this.emit('bet-changed', this.bet);
+		}
+	}
+
+	private adjustBet(delta: number): void {
+		const nextBet = clampBet(this.bet + delta, this.minBet, this.maxBet);
+
+		if (nextBet === this.bet) {
+			return;
+		}
+
+		this.applyBet(nextBet, true);
+	}
+
+	private bindBetButton(button: UIButton, delta: number): void {
+		let isClickBlocked = false;
+
+		button.on('pointertap', () => {
+			if (isClickBlocked) {
+				return;
+			}
+
+			SoundManager.playSound('button-pressed', 1, { speed: 1.3 + this.bet * 0.06 });
+			this.adjustBet(delta);
+			isClickBlocked = true;
+			gsap.delayedCall(0.15, () => {
+				isClickBlocked = false;
+			});
+		});
+	}
+
 	private bindButtonSignal(button: UIButton, eventName: string): void {
 		let isClickBlocked = false;
 
@@ -240,6 +303,7 @@ export class GameHUD extends HUD {
 				return;
 			}
 
+			SoundManager.playSound('button-pressed');
 			this.emit(eventName);
 			isClickBlocked = true;
 			gsap.delayedCall(0.15, () => {
@@ -292,7 +356,32 @@ export class GameHUD extends HUD {
 			return;
 		}
 
-		this.balanceLabel.text = this.wallet.balance.toString();
+		this.balanceLabel.text = this.displayedBalance.toString();
+	}
+
+	private setDisplayedBalance(balance: number): void {
+		gsap.killTweensOf(this.balanceTicker);
+		this.displayedBalance = balance;
+		this.balanceTicker.value = balance;
+		this.refreshBalanceLabel();
+	}
+
+	private animateDisplayedBalance(targetBalance: number, durationMs: number): void {
+		gsap.killTweensOf(this.balanceTicker);
+		this.balanceTicker.value = this.displayedBalance;
+
+		gsap.to(this.balanceTicker, {
+			value: targetBalance,
+			duration: durationMs / 1000,
+			ease: 'power1.out',
+			onUpdate: () => {
+				this.displayedBalance = Math.round(this.balanceTicker.value);
+				this.refreshBalanceLabel();
+			},
+			onComplete: () => {
+				this.setDisplayedBalance(targetBalance);
+			},
+		});
 	}
 
 	private refreshBetLabel(): void {

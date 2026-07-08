@@ -61,6 +61,7 @@ export class MockSlotServer {
 			player: { ...this.player },
 			wallet: { ...this.wallet },
 			game_id: game.gameId,
+			max_bet: game.maxBet,
 			symbols: cloneReelMatrix(this.reelStates[game.gameId]),
 		};
 	}
@@ -84,9 +85,20 @@ export class MockSlotServer {
 		const { bet } = parsedQuery.data;
 		const currentSymbols = this.getReelState(game);
 
+		if (bet > game.maxBet) {
+			return {
+				isWin: false,
+				winAmount: 0,
+				wallet: { ...this.wallet },
+				symbols: cloneReelMatrix(currentSymbols),
+				error: `Bet exceeds maximum allowed (${game.maxBet})`,
+			};
+		}
+
 		if (bet > this.wallet.balance) {
 			return {
 				isWin: false,
+				winAmount: 0,
 				wallet: { ...this.wallet },
 				symbols: cloneReelMatrix(currentSymbols),
 				error: 'Insufficient balance',
@@ -96,10 +108,11 @@ export class MockSlotServer {
 		this.wallet.balance -= bet;
 
 		const symbols = game.rollMatrix();
-		const isWin = game.isWin(symbols);
+		const outcome = game.evaluatePayline(symbols);
+		const winAmount = bet * outcome.winMultiplier;
 
-		if (isWin) {
-			this.wallet.balance += game.getWinPayout();
+		if (outcome.isWin) {
+			this.wallet.balance += winAmount;
 		}
 
 		this.reelStates[game.gameId] = symbols;
@@ -107,7 +120,8 @@ export class MockSlotServer {
 		this.persistSession();
 
 		return {
-			isWin,
+			isWin: outcome.isWin,
+			winAmount,
 			wallet: { ...this.wallet },
 			symbols: cloneReelMatrix(symbols),
 		};
@@ -144,6 +158,7 @@ export class MockSlotServer {
 			player: { ...this.player },
 			wallet: { ...this.wallet },
 			game_id: resolvedGameId,
+			max_bet: this.activeGame?.maxBet ?? 0,
 			symbols,
 			error: message,
 		};
@@ -156,6 +171,7 @@ export class MockSlotServer {
 
 		return {
 			isWin: false,
+			winAmount: 0,
 			wallet: { ...this.wallet },
 			symbols,
 			error: message,
