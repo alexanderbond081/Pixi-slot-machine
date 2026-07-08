@@ -11,7 +11,7 @@ import { PreloadScene } from './scenes/preload-scene';
 import { SlotMachineClient } from './game/slot-machine-client';
 import { IInitResponse, ISpinResponse, IWallet } from './game/slot-game-interface';
 import { GameSceneCatalogEntry, gameSceneCatalog } from './managers/scenes-catalog';
-import { createVersionLabel, logBuildInfo } from './version';
+import { logBuildInfo } from './version';
 
 import './global-delay';
 import { GameHUD } from './hud/game-hud';
@@ -269,11 +269,6 @@ async function changeScene(newScene: Scene): Promise<void> {
 async function initHUD(): Promise<void> {
 	await gameHUD.init();
 	hudLayer.addChild(gameHUD);
-
-	const versionLabel = createVersionLabel();
-	versionLabel.x = 8;
-	versionLabel.y = gameHeight - versionLabel.height - 8;
-	hudLayer.addChild(versionLabel);
 }
 
 function initFadeEffect(): void {

@@ -18,17 +18,26 @@ export const logBuildInfo = (): void => {
 	console.info(`[Slot Game] ${formatBuildLabel()} (built ${BUILD_INFO.builtAt})`);
 };
 
+const VERSION_TEXT_FILL = '#D9B978';
+const VERSION_TEXT_SHADOW = '#4A3520';
+
 export const createVersionLabel = (): Text => {
 	const label = new Text({
 		text: formatBuildLabel(),
 		style: new TextStyle({
 			fontFamily: 'monospace',
-			fontSize: 11,
-			fill: 0xffffff,
+			fontSize: 12,
+			fill: VERSION_TEXT_FILL,
+			dropShadow: {
+				alpha: 0.95,
+				angle: -Math.PI / 2,
+				blur: 0,
+				color: VERSION_TEXT_SHADOW,
+				distance: 1,
+			},
 		}),
 	});
 
-	label.alpha = 0.45;
 	label.eventMode = 'none';
 
 	return label;

@@ -1,25 +1,36 @@
-import { Assets, Container, Sprite, Spritesheet, Text, TextStyle } from 'pixi.js';
+import { Assets, Container, NineSliceSprite, Sprite, Spritesheet, Text, TextStyle } from 'pixi.js';
 import { gsap } from 'gsap';
 import { HighlightDecoration } from '../components/highlight-decoration';
 import { UIButton } from '../components/ui-button';
 import { IWallet } from '../game/slot-game-interface';
 import { SoundManager } from '../managers/sound-manager';
 import { Scene } from '../scenes/scene';
+import { createVersionLabel } from '../version';
 import { HUD } from './hud';
 
 const PANEL_MARGIN = 8;
+
 const SOUND_BUTTON_LEFT = 42;
+const INFO_BUTTON_LEFT = 106
+
+const INFO_LABEL_LEFT = 180;
+const INFO_PANEL_HEIGHT = 60;
+const INFO_PANEL_WIDTH = 220;
+
+const BALANCE_RIGHT = 68;
+const BET_RIGHT = 224;
+
 const HUD_BUTTON_SIZE = 48;
-const BET_BUTTON_SIZE = 36;
-const BUTTON_GAP = 24;
-const BALANCE_RIGHT = 60;
-const BALANCE_HEIGHT = 70;
-const BALANCE_WIDTH = 140;
+const BET_BUTTON_SIZE = 38;
+
+const BALANCE_HEIGHT = 60;
+const BALANCE_WIDTH = 130;
 const BALANCE_TEXT_TOP = 9;
-const BET_RIGHT = 220;
-const BET_PANEL_HEIGHT = 62;
+
+const BET_PANEL_HEIGHT = 56;
 const BET_PANEL_WIDTH = 62;
 const BET_TEXT_TOP = 7;
+
 const BALANCE_FONTSIZE = 24;
 const BALANCE_FONTCOLOR = '#FFB000';
 const BALANCE_FONT_GLOW = '#FF8C00';
@@ -28,6 +39,8 @@ export class GameHUD extends HUD {
 	private panelSprite!: Sprite;
 	private soundButton!: UIButton;
 	private infoButton!: UIButton;
+	private infoPanel!: NineSliceSprite;
+	private versionLabel!: Text;
 	private coinsButton!: UIButton;
 	private betControls!: Container;
 	private betMinusButton!: UIButton;
@@ -44,6 +57,7 @@ export class GameHUD extends HUD {
 		await this.addPanel();
 		await this.addSoundButton();
 		await this.addInfoButton();
+		await this.addInfoPanel();
 		await this.addBetControls();
 		await this.addBalanceBadge();
 		await this.addCoinsButton();
@@ -67,6 +81,7 @@ export class GameHUD extends HUD {
 		this.adjustPanel();
 		this.adjustSoundButton();
 		this.adjustInfoButton();
+		this.adjustInfoPanel();
 		this.adjustBetControls();
 		this.adjustBalanceBadge();
 		this.adjustCoinsButton();
@@ -117,6 +132,25 @@ export class GameHUD extends HUD {
 		this.adjustInfoButton();
 		this.addChild(this.infoButton);
 		this.bindButtonSignal(this.infoButton, 'show-info');
+	}
+
+	private async addInfoPanel(): Promise<void> {
+		const texture = await Assets.load('panel-info');
+		this.infoPanel = new NineSliceSprite({
+			texture,
+			leftWidth: 15,
+			rightWidth: 15,
+			topHeight: 13,
+			bottomHeight: 15,
+			width: INFO_PANEL_WIDTH,
+			height: INFO_PANEL_HEIGHT,
+		});
+		this.infoPanel.anchor.set(0.5);
+		this.versionLabel = createVersionLabel();
+		this.versionLabel.anchor.set(0.5);
+		this.adjustInfoPanel();
+		this.addChild(this.infoPanel);
+		this.addChild(this.versionLabel);
 	}
 
 	private async addCoinsButton(): Promise<void> {
@@ -227,8 +261,15 @@ export class GameHUD extends HUD {
 	}
 
 	private adjustInfoButton(): void {
-		this.infoButton.x = this.soundButton.x + HUD_BUTTON_SIZE / 2 + BUTTON_GAP + HUD_BUTTON_SIZE / 2;
+		this.infoButton.x = INFO_BUTTON_LEFT + HUD_BUTTON_SIZE / 2;
 		this.infoButton.y = this.panelSprite.y + this.panelSprite.height / 2;
+	}
+
+	private adjustInfoPanel(): void {
+		this.infoPanel.x = INFO_LABEL_LEFT + INFO_PANEL_WIDTH / 2;
+		this.infoPanel.y = this.panelSprite.y + this.panelSprite.height / 2;
+		this.versionLabel.x = this.infoPanel.x;
+		this.versionLabel.y = this.infoPanel.y;
 	}
 
 	private adjustBetControls(): void {
