@@ -5,7 +5,6 @@ export const accountConfig = {
 	initialBalance: 10,
 	currency: 'coins',
 	decimals: 0,
-	legacyStorageKey: 'slot-game:mock:lucky_guy',
 	walletStorageKey: 'slot-game:mock:lucky_guy:wallet',
 	sessionStorageKey: 'slot-game:mock:lucky_guy:session',
 } as const;

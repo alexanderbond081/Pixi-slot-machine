@@ -14,68 +14,14 @@ const MockGameSessionScheme = z.object({
 
 export type MockGameSession = z.infer<typeof MockGameSessionScheme>;
 
-// Legacy single-key snapshot — used only for one-time migration.
-const MockLegacyPersistedStateScheme = MockGameSessionScheme.extend({
-	wallet: WalletScheme,
-});
-
-const migrateLegacyStorageIfNeeded = (): void => {
-	const legacyRaw = localStorage.getItem(accountConfig.legacyStorageKey);
-
-	if (!legacyRaw) {
-		return;
-	}
-
-	const walletExists = localStorage.getItem(accountConfig.walletStorageKey) !== null;
-	const sessionExists = localStorage.getItem(accountConfig.sessionStorageKey) !== null;
-
-	if (walletExists || sessionExists) {
-		localStorage.removeItem(accountConfig.legacyStorageKey);
-		return;
-	}
-
-	try {
-		const legacy = MockLegacyPersistedStateScheme.parse(JSON.parse(legacyRaw));
-		localStorage.setItem(accountConfig.walletStorageKey, JSON.stringify(legacy.wallet));
-		localStorage.setItem(
-			accountConfig.sessionStorageKey,
-			JSON.stringify({ player: legacy.player, reelStates: legacy.reelStates }),
-		);
-	} catch (error) {
-		console.warn('Mock persistence: legacy storage migration failed', error);
-	}
-
-	localStorage.removeItem(accountConfig.legacyStorageKey);
-};
-
 export const cloneReelMatrix = (matrix: ReelMatrix): ReelMatrix => {
 	return matrix.map((reel) => [...reel]);
 };
 
 /** External casino platform wallet — credits, balance reads, spin settlement writes */
 export class MockWalletLedger {
-	constructor() {
-		migrateLegacyStorageIfNeeded();
-	}
-
 	public loadWallet(): IWallet {
-		const raw = localStorage.getItem(accountConfig.walletStorageKey);
-
-		if (!raw) {
-			return this.createDefaultWallet();
-		}
-
-		try {
-			return WalletScheme.parse(JSON.parse(raw));
-		} catch (error) {
-			console.warn('MockWalletLedger: invalid wallet data, resetting', error);
-			return this.createDefaultWallet();
-		}
-	}
-
-	public saveWallet(wallet: IWallet): void {
-		const validated = WalletScheme.parse(wallet);
-		localStorage.setItem(accountConfig.walletStorageKey, JSON.stringify(validated));
+		return { ...this.ensureWalletLoaded() };
 	}
 
 	public creditWallet(amount: number): IWallet {
@@ -83,11 +29,28 @@ export class MockWalletLedger {
 			throw new Error(`creditWallet: amount must be a positive integer, received ${amount}`);
 		}
 
-		const wallet = this.loadWallet();
-		wallet.balance += amount;
-		this.saveWallet(wallet);
+		return this.mutateWallet((wallet) => {
+			wallet.balance += amount;
+		});
+	}
 
-		return { ...wallet };
+	/** Atomic spin settlement — debit bet and credit win in a single read-modify-write */
+	public settleSpin(bet: number, winAmount: number): IWallet {
+		if (!Number.isInteger(bet) || bet < 0) {
+			throw new Error(`settleSpin: bet must be a non-negative integer, received ${bet}`);
+		}
+
+		if (!Number.isInteger(winAmount) || winAmount < 0) {
+			throw new Error(`settleSpin: winAmount must be a non-negative integer, received ${winAmount}`);
+		}
+
+		return this.mutateWallet((wallet) => {
+			if (wallet.balance < bet) {
+				throw new Error(`settleSpin: insufficient balance (have ${wallet.balance}, need ${bet})`);
+			}
+
+			wallet.balance = wallet.balance - bet + winAmount;
+		});
 	}
 
 	public createDefaultWallet(): IWallet {
@@ -97,14 +60,53 @@ export class MockWalletLedger {
 			decimals: accountConfig.decimals,
 		};
 	}
+
+	private readStoredWallet(): IWallet | null {
+		const raw = localStorage.getItem(accountConfig.walletStorageKey);
+
+		if (!raw) {
+			return null;
+		}
+
+		try {
+			return WalletScheme.parse(JSON.parse(raw));
+		} catch (error) {
+			console.warn('MockWalletLedger: invalid wallet data, resetting', error);
+			return null;
+		}
+	}
+
+	private saveWallet(wallet: IWallet): void {
+		const validated = WalletScheme.parse(wallet);
+		localStorage.setItem(accountConfig.walletStorageKey, JSON.stringify(validated));
+	}
+
+	/** Create default wallet only when storage is missing or corrupt — never load-then-save an existing record */
+	private ensureWalletLoaded(): IWallet {
+		const stored = this.readStoredWallet();
+
+		if (stored) {
+			return stored;
+		}
+
+		const wallet = this.createDefaultWallet();
+		this.saveWallet(wallet);
+
+		return wallet;
+	}
+
+	/** Single entry point for balance mutations — read, apply, write without yielding */
+	private mutateWallet(apply: (wallet: IWallet) => void): IWallet {
+		const wallet = this.ensureWalletLoaded();
+		apply(wallet);
+		this.saveWallet(wallet);
+
+		return { ...wallet };
+	}
 }
 
 /** Game server session store — player profile and per-game reel snapshots */
 export class MockGameSessionStore {
-	constructor() {
-		migrateLegacyStorageIfNeeded();
-	}
-
 	public loadSession(): MockGameSession | null {
 		const raw = localStorage.getItem(accountConfig.sessionStorageKey);
 

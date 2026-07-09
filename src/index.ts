@@ -9,6 +9,8 @@ import { LoadingScene } from './scenes/loading-scene';
 import { MainGameScene } from './scenes/main-game-scene';
 import { PreloadScene } from './scenes/preload-scene';
 import { SlotMachineClient } from './game/slot-machine-client';
+import { PayClient } from './game/pay-client';
+import { MockWalletLedger } from './game/server/mock-persistence';
 import { IInitResponse, ISpinResponse, IWallet } from './game/slot-game-interface';
 import { GameSceneCatalogEntry, gameSceneCatalog } from './managers/scenes-catalog';
 import { logBuildInfo } from './version';
@@ -29,7 +31,9 @@ const COIN_WAVE_DELAY_MS = 100;
 const COIN_WAVE_TAIL_DELAY_MS = 100;
 
 const app = new Application();
-const gameClient = new SlotMachineClient();
+const walletLedger = new MockWalletLedger();
+const gameClient = new SlotMachineClient(undefined, walletLedger);
+const payClient = new PayClient(walletLedger);
 const gameHUD = new GameHUD();
 
 const gameLayer = new Container();
@@ -369,8 +373,8 @@ async function onCheatTriggered(): Promise<void> {
 	if (!(currentScene instanceof MainGameScene) || !isServerConnected) {
 		return;
 	}
-	gameClient.cheatCoins(1);
-	changeWalletBalance(1, { durationMs: 250 });
+	const wallet = await payClient.addCoins(1);
+	updateWallet(wallet, { durationMs: 250 });
 }
 
 function onKeyDown(event: KeyboardEvent): void {

@@ -13,7 +13,6 @@ export class MockSlotServer {
 	private readonly walletLedger: MockWalletLedger;
 
 	private player: IPlayer;
-	private wallet: IWallet;
 	private reelStates: Record<string, ReelMatrix>;
 
 	private activeGame: GameDefinition | null = null;
@@ -25,10 +24,8 @@ export class MockSlotServer {
 		const session = this.sessionStore.loadSession() ?? this.sessionStore.createEmptySession();
 		this.player = session.player;
 		this.reelStates = session.reelStates;
-		this.wallet = this.walletLedger.loadWallet();
 
 		this.persistSession();
-		this.walletLedger.saveWallet(this.wallet);
 	}
 
 	public listAvailableGameIds(): string[] {
@@ -36,8 +33,6 @@ export class MockSlotServer {
 	}
 
 	public async handleInit(query: IInitQuery): Promise<IInitResponse> {
-		this.syncWalletFromPlatform();
-
 		const parsedQuery = InitQueryScheme.safeParse(query);
 
 		if (!parsedQuery.success) {
@@ -59,7 +54,7 @@ export class MockSlotServer {
 
 		return {
 			player: { ...this.player },
-			wallet: { ...this.wallet },
+			wallet: this.readWallet(),
 			game_id: game.gameId,
 			max_bet: game.maxBet,
 			symbols: cloneReelMatrix(this.reelStates[game.gameId]),
@@ -67,8 +62,6 @@ export class MockSlotServer {
 	}
 
 	public async handleSpin(query: ISpinQuery): Promise<ISpinResponse> {
-		this.syncWalletFromPlatform();
-
 		await this.simulateNetworkDelay();
 
 		if (!this.activeGame) {
@@ -89,42 +82,41 @@ export class MockSlotServer {
 			return {
 				isWin: false,
 				winAmount: 0,
-				wallet: { ...this.wallet },
+				wallet: this.readWallet(),
 				symbols: cloneReelMatrix(currentSymbols),
 				error: `Bet exceeds maximum allowed (${game.maxBet})`,
 			};
 		}
 
-		if (bet > this.wallet.balance) {
-			return {
-				isWin: false,
-				winAmount: 0,
-				wallet: { ...this.wallet },
-				symbols: cloneReelMatrix(currentSymbols),
-				error: 'Insufficient balance',
-			};
-		}
-
-		this.wallet.balance -= bet;
-
 		const symbols = game.rollMatrix();
 		const outcome = game.evaluatePayline(symbols);
 		const winAmount = bet * outcome.winMultiplier;
 
-		if (outcome.isWin) {
-			this.wallet.balance += winAmount;
+		try {
+			const wallet = this.walletLedger.settleSpin(bet, winAmount);
+
+			this.reelStates[game.gameId] = symbols;
+			this.persistSession();
+
+			return {
+				isWin: outcome.isWin,
+				winAmount,
+				wallet,
+				symbols: cloneReelMatrix(symbols),
+			};
+		} catch (error) {
+			if (error instanceof Error && error.message.startsWith('settleSpin: insufficient balance')) {
+				return {
+					isWin: false,
+					winAmount: 0,
+					wallet: this.readWallet(),
+					symbols: cloneReelMatrix(currentSymbols),
+					error: 'Insufficient balance',
+				};
+			}
+
+			throw error;
 		}
-
-		this.reelStates[game.gameId] = symbols;
-		this.walletLedger.saveWallet(this.wallet);
-		this.persistSession();
-
-		return {
-			isWin: outcome.isWin,
-			winAmount,
-			wallet: { ...this.wallet },
-			symbols: cloneReelMatrix(symbols),
-		};
 	}
 
 	private getReelState(game: GameDefinition): string[][] {
@@ -138,8 +130,8 @@ export class MockSlotServer {
 		});
 	}
 
-	private syncWalletFromPlatform(): void {
-		this.wallet = this.walletLedger.loadWallet();
+	private readWallet(): IWallet {
+		return { ...this.walletLedger.loadWallet() };
 	}
 
 	private simulateNetworkDelay(): Promise<void> {
@@ -156,7 +148,7 @@ export class MockSlotServer {
 
 		return {
 			player: { ...this.player },
-			wallet: { ...this.wallet },
+			wallet: this.readWallet(),
 			game_id: resolvedGameId,
 			max_bet: this.activeGame?.maxBet ?? 0,
 			symbols,
@@ -172,7 +164,7 @@ export class MockSlotServer {
 		return {
 			isWin: false,
 			winAmount: 0,
-			wallet: { ...this.wallet },
+			wallet: this.readWallet(),
 			symbols,
 			error: message,
 		};
