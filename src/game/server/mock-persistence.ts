@@ -58,6 +58,7 @@ export class MockWalletLedger {
 			balance: accountConfig.initialBalance,
 			currency: accountConfig.currency,
 			decimals: accountConfig.decimals,
+			lastTransactionIndex: 0,
 		};
 	}
 
@@ -69,7 +70,18 @@ export class MockWalletLedger {
 		}
 
 		try {
-			return WalletScheme.parse(JSON.parse(raw));
+			const parsed = JSON.parse(raw) as Partial<IWallet> | null;
+
+			if (!parsed || typeof parsed !== 'object') {
+				throw new Error('Wallet storage payload must be an object');
+			}
+
+			const withIndex = {
+				...parsed,
+				lastTransactionIndex: parsed.lastTransactionIndex ?? 0,
+			};
+
+			return WalletScheme.parse(withIndex);
 		} catch (error) {
 			console.warn('MockWalletLedger: invalid wallet data, resetting', error);
 			return null;
@@ -99,6 +111,7 @@ export class MockWalletLedger {
 	private mutateWallet(apply: (wallet: IWallet) => void): IWallet {
 		const wallet = this.ensureWalletLoaded();
 		apply(wallet);
+		wallet.lastTransactionIndex += 1;
 		this.saveWallet(wallet);
 
 		return { ...wallet };

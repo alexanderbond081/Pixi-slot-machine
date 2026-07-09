@@ -1,10 +1,4 @@
 import { Scene } from '../scenes/scene';
-import { IWallet } from '../game/slot-game-interface';
-
-export type WalletUpdateOptions = {
-	instant?: boolean;
-	durationMs?: number;
-};
 
 export abstract class HUD extends Scene {
 
@@ -12,7 +6,11 @@ export abstract class HUD extends Scene {
 
 	public abstract update(deltaTime: number): void;
 
-	public abstract updateWallet(wallet: IWallet, options?: WalletUpdateOptions): void;
+	public abstract setDisplayedBalance(balance: number): void;
+
+	public abstract animateBalanceTo(balance: number, durationMs: number): void;
+
+	public abstract getDisplayedBalance(): number;
 
 	public abstract setBetLimits(minBet: number, maxBet: number): void;
 

@@ -19,12 +19,14 @@ export interface IWallet {
 	balance: number;
 	currency: string; // normally it should be ISO 4217, but in current game implementation it's just coins
 	decimals: number;
+	lastTransactionIndex: number;
 }
 
 export const WalletScheme = z.object({
 	balance: nonNegativeInt,
 	currency: nonEmptyString,
 	decimals: nonNegativeInt,
+	lastTransactionIndex: nonNegativeInt,
 });
 
 // init query objects

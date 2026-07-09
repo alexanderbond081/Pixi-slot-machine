@@ -2,11 +2,10 @@ import { Assets, Container, NineSliceSprite, Sprite, Spritesheet, Text, TextStyl
 import { gsap } from 'gsap';
 import { HighlightDecoration } from '../components/highlight-decoration';
 import { UIButton } from '../components/ui-button';
-import { IWallet } from '../game/slot-game-interface';
 import { SoundManager } from '../managers/sound-manager';
 import { Scene } from '../scenes/scene';
 import { createVersionLabel } from '../version';
-import { HUD, WalletUpdateOptions } from './hud';
+import { HUD } from './hud';
 
 const PANEL_MARGIN = 8;
 
@@ -37,8 +36,6 @@ const BALANCE_FONT_GLOW = '#FF8C00';
 
 const DEFAULT_MIN_BET = 1;
 const BET_STEP = 1;
-const BET_BALANCE_DURATION_MS = 350;
-
 const clampBet = (value: number, minBet: number, maxBet: number): number => {
 	return Math.min(maxBet, Math.max(minBet, value));
 };
@@ -58,7 +55,6 @@ export class GameHUD extends HUD {
 	private balanceBadge!: Container;
 	private balancePanel!: Sprite;
 	private balanceLabel!: Text;
-	private wallet: IWallet = { balance: 0, currency: 'coins', decimals: 0 };
 	private displayedBalance = 0;
 	private readonly balanceTicker = { value: 0 };
 	private minBet = DEFAULT_MIN_BET;
@@ -79,15 +75,24 @@ export class GameHUD extends HUD {
 
 	}
 
-	public updateWallet(wallet: IWallet, options?: WalletUpdateOptions): void {
-		this.wallet = { ...wallet };
-
-		if (options?.instant || wallet.balance === this.displayedBalance) {
-			this.setDisplayedBalance(wallet.balance);
+	public animateBalanceTo(targetBalance: number, durationMs: number): void {
+		if (targetBalance === this.displayedBalance) {
 			return;
 		}
 
-		this.animateDisplayedBalance(wallet.balance, options?.durationMs ?? BET_BALANCE_DURATION_MS);
+		this.displayedBalance = targetBalance;
+		this.animateDisplayedBalance(targetBalance, durationMs);
+	}
+
+	public getDisplayedBalance(): number {
+		return this.displayedBalance;
+	}
+
+	public setDisplayedBalance(balance: number): void {
+		gsap.killTweensOf(this.balanceTicker);
+		this.displayedBalance = balance;
+		this.balanceTicker.value = balance;
+		this.refreshBalanceLabel();
 	}
 
 	public setBetLimits(minBet: number, maxBet: number): void {
@@ -356,30 +361,22 @@ export class GameHUD extends HUD {
 			return;
 		}
 
-		this.balanceLabel.text = this.displayedBalance.toString();
-	}
-
-	private setDisplayedBalance(balance: number): void {
-		gsap.killTweensOf(this.balanceTicker);
-		this.displayedBalance = balance;
-		this.balanceTicker.value = balance;
-		this.refreshBalanceLabel();
+		this.balanceLabel.text = Math.round(this.balanceTicker.value).toString();
 	}
 
 	private animateDisplayedBalance(targetBalance: number, durationMs: number): void {
 		gsap.killTweensOf(this.balanceTicker);
-		this.balanceTicker.value = this.displayedBalance;
 
 		gsap.to(this.balanceTicker, {
 			value: targetBalance,
 			duration: durationMs / 1000,
 			ease: 'power1.out',
 			onUpdate: () => {
-				this.displayedBalance = Math.round(this.balanceTicker.value);
 				this.refreshBalanceLabel();
 			},
 			onComplete: () => {
-				this.setDisplayedBalance(targetBalance);
+				this.balanceTicker.value = targetBalance;
+				this.refreshBalanceLabel();
 			},
 		});
 	}
