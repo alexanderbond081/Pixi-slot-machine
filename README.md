@@ -4,11 +4,12 @@ A browser-based slot machine demo built with **Pixi.js v8**, **TypeScript**, **G
 
 ## Features
 
-- **Three independent reels** with acceleration, deceleration, and a micro-bounce stop animation
+- **Three independent reels** with acceleration, adaptive braking (~40 frames per stop), and a micro-bounce click animation
 - **Mock game server** — init/spin API with Zod-validated contracts; symbol outcomes, paytable evaluation, and wallet settlement run server-side (no client-side cheat logic on the final design path)
 - **Wallet persistence** — balance stored in `localStorage` with `lastTransactionIndex` for stale snapshot rejection
+- **Balance presenter** — phased HUD updates: debit on spin start, hold server result during reel animation, reveal after all reels stop
 - **HUD** — balance display with animated debit/credit, bet controls (+/−), sound/info buttons, build version label
-- **Scene catalog** — entries map scene id → asset bundle → optional `gameId`; factory passes server `symbolIds` and reel matrix into the scene constructor
+- **Scene catalog** — entries map scene id → asset bundle → optional `gameId`; factory passes server `symbolIds` (atlas order) and `symbols` (3×3 window) into the scene constructor
 - **Spine animations** — owl character reactions and coin burst particles on win
 - **Layered audio** — separate music, ambience, and SFX buses via `@pixi/sound`; per-reel spin sounds with staggered stop clicks
 - **Scene flow** — preload splash → loading screen with progress bar → main game, with GSAP fade transitions
@@ -73,7 +74,7 @@ src/
 ├── version.ts                      # Build label formatting for HUD and console
 ├── assets/                         # Images, sounds, Spine data, asset manifest
 ├── components/
-│   ├── reel.ts, coin.ts            # Reel physics and coin particles
+│   ├── reel.ts, coin.ts            # Reel physics (adaptive stop) and coin particles
 │   ├── ui-button.ts                # Interactive UI button (Decoratable)
 │   ├── highlight-decoration.ts     # Hover / press / tap GSAP effects
 │   └── spine-display.ts            # Spine animation wrapper
@@ -85,7 +86,7 @@ src/
 │       ├── mock-slot-server.ts     # Init / spin handlers
 │       ├── mock-persistence.ts     # Wallet ledger + session store (localStorage)
 │       ├── game-definition.ts      # GameDefinition interface
-│       └── games/                  # Per-game rules (slot_reels_3x3, …)
+│       └── games/                  # Per-game rules (slot_reels_3x3, slot_bar, …)
 ├── hud/
 │   ├── game-hud.ts                 # Balance, bet, sound, version panel
 │   └── balance-presenter.ts        # Wallet display logic (debit / reveal / credit)
@@ -108,8 +109,9 @@ src/
 
 - Assets are loaded through Pixi `Assets` bundles defined in `src/assets/manifest.json`.
 - Webpack aliases `pixi.js` to a single ESM entry point so Spine and the app share one Pixi instance.
-- **Scene creation:** `loadGameScene` fetches server init, then calls the catalog factory with `symbolIds` (atlas order) and `symbols` (3×3 reel window). The scene applies this state in `addReels()`.
-- **Spin flow:** client debits balance visually → server `fetchSpin` → reels stop on payline keys from `result.symbols` → balance reveal animation.
+- **Scene creation:** `loadGameScene` fetches server init, then `createGameScene` passes `symbolKeys: initResponse.symbolIds` and `symbolMatrix: initResponse.symbols` to the catalog factory. The scene builds reel texture maps and the initial window in `addReels()`.
+- **Spin flow:** lever debits balance (`BalancePresenter.onSpinStarted`) → server `fetchSpin` → each reel stops on the payline symbol `result.symbols[reelIndex][1]` → balance reveal after the last reel (`onReelsStopped`).
+- **API field names** use camelCase (`gameId`, `maxBet`, `symbolIds`) in TypeScript contracts and mock server responses.
 - GSAP `PixiPlugin` is registered in `index.ts` for scene fade effects and UI decorations.
 - `Filter.defaultOptions.resolution = 'inherit'` keeps ColorMatrix filters sharp on high-DPI and zoomed pages.
 - `npm run build` produces an optimized static bundle in `dist/` for deployment or Docker.
@@ -129,9 +131,9 @@ The game version lives in `package.json` (`version` field). Each `npm start` / `
 
 **Where to look:**
 
-- **Local dev** (`npm start`) — info panel (bottom bar): `v1.1.0 · dev · abc1234*` and the same string in the browser console. `*` means uncommitted changes.
+- **Local dev** (`npm start`) — HUD info panel (bottom bar): `v1.1.0 dev 2026-07-10*` (date from build time; `*` = uncommitted changes). Console logs the full line: `v1.1.0 · dev · abc1234* · …`.
 - **GitHub** — check `package.json` version + `git log -1 --oneline`. Tag releases as `v1.1.0` to match the version field.
-- **itch.io build** — run `npm run build:itch`, then open `dist/BUILD.txt` or the in-game label: `v1.1.0 itch 2026-07-10` (full details in console and `BUILD.txt`).
+- **itch.io build** — run `npm run build:itch`, then open `dist/BUILD.txt` or the in-game label: `v1.1.0 itch 2026-07-10` (sha, buildId, and channel in console / `BUILD.txt`).
 
 ### Before a git commit
 
@@ -153,13 +155,17 @@ Regular WIP commits do **not** require a version bump.
 ### Before pushing to GitHub
 
 1. Commit (or stash) all changes — a dirty working tree shows `*` in the dev label and is harder to trace.
-2. If this push is a **release**, ensure the version was bumped and the tag exists:
+2. Push your feature branch and open a PR into `main`:
+   ```bash
+   git push -u origin HEAD
+   ```
+3. If this push is a **release**, ensure the version was bumped and the tag exists:
    ```bash
    git tag v1.1.1        # if not created yet
    git push origin main
    git push origin v1.1.1
    ```
-3. For everyday pushes, just `git push` — no version bump needed.
+4. For everyday WIP pushes, step 2 is enough — no version bump needed.
 
 ### Before uploading to itch.io
 
@@ -180,8 +186,10 @@ Regular WIP commits do **not** require a version bump.
 
 ## Roadmap (planned)
 
+- Reel stop polish — smoother adaptive braking, optimize `adjustSymbolsPos`
 - Responsive layout (`resize` wiring, browser zoom / DPR sync)
 - `IGameSceneCapabilities` — decouple `index.ts` from `MainGameScene` (`instanceof` stubs today)
+- HUD info / wallet buttons — wire `show-info` and `show-wallet` signals from `GameHUD`
 - Server error UX — emergency reel stop animation when spin/init fails
 - Additional catalog entries (1×3 thimbles, other reel layouts)
 - Real backend integration (replace mock server / pay client)
