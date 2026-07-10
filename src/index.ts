@@ -16,7 +16,7 @@ import { GameSceneCatalogEntry, gameSceneCatalog } from './managers/scenes-catal
 import { logBuildInfo } from './version';
 
 import './global-delay';
-import { BalancePresenter, estimateWinBalanceDurationMs, LOSS_REVEAL_DURATION_MS } from './hud/balance-presenter';
+import { BalancePresenter, LOSS_REVEAL_DURATION_MS } from './hud/balance-presenter';
 import { GameHUD } from './hud/game-hud';
 
 Filter.defaultOptions.resolution = 'inherit';
@@ -46,7 +46,7 @@ let gameWidth = 800;
 let gameHeight = 600;
 
 let currentScene: Scene | null = null;
-let gameSceneAccets: string = '';
+let gameSceneAssets: string = '';
 let isServerConnected = false;
 
 let isPaused = true;
@@ -122,9 +122,9 @@ async function loadGameScene(sceneId: string): Promise<void> {
 
 	const loadingScene = new LoadingScene();
 	await changeScene(loadingScene);
-	if (gameSceneAccets) {
-		await Assets.unloadBundle(gameSceneAccets);
-		gameSceneAccets = '';
+	if (gameSceneAssets) {
+		await Assets.unloadBundle(gameSceneAssets);
+		gameSceneAssets = '';
 	}
 
 	// ?? the only way?
@@ -134,7 +134,7 @@ async function loadGameScene(sceneId: string): Promise<void> {
 	const assetsPromise = Assets.loadBundle(entry.assetBundle, p => loadingScene.onProgress(p * 0.9 + 0.1));
 	const [serverInit] = await Promise.all([serverInitPromise, assetsPromise]);
 
-	gameSceneAccets = entry.assetBundle;
+	gameSceneAssets = entry.assetBundle;
 
 	isServerConnected = serverInit.connected;
 
@@ -154,7 +154,7 @@ async function loadGameScene(sceneId: string): Promise<void> {
 
 async function connectToGameServer(gameId: string): Promise<{ connected: boolean; response: IInitResponse | null }> {
 	try {
-		const response = await gameClient.fetchInit({ token: MOCK_TOKEN, game_id: gameId });
+		const response = await gameClient.fetchInit({ token: MOCK_TOKEN, gameId });
 		const connected = response.error === undefined;
 
 		if (!connected) {
@@ -169,31 +169,21 @@ async function connectToGameServer(gameId: string): Promise<{ connected: boolean
 }
 
 function createGameScene(entry: GameSceneCatalogEntry, initResponse: IInitResponse | null): Scene {
-	// !! in progress
-	const gameScene = entry.createScene(); //new MainGameScene(extractReelStopKeys(initResponse.symbols));
+	const sceneArgs = initResponse !== null && initResponse.error === undefined
+		? {
+			symbolKeys: initResponse.symbolIds,
+			symbolMatrix: initResponse.symbols,
+		}
+		: undefined;
 
-	if (entry.gameId && initResponse && initResponse.error === undefined) {
-		setupReels(gameScene, initResponse);
+	const gameScene = entry.createScene(sceneArgs);
+
+	if (entry.gameId && initResponse?.error === undefined) {
 		connectLever(gameScene, isServerConnected);
 		connectCheat(gameScene, isServerConnected);
 	}
 
 	return gameScene;
-}
-
-/** STUB: future — scene.applyReelMatrix(initResponse.symbols) to sync visible reels with server state */
-function setupReels(scene: Scene, initResponse: IInitResponse | null): void {
-	if (!(scene instanceof MainGameScene)) {
-		return;
-	}
-
-	const connected = initResponse !== null && initResponse.error === undefined;
-
-	if (connected) {
-		return;
-	}
-
-	console.warn('setupReels: server unavailable, scene uses default reel configuration');
 }
 
 /** STUB: replace with IGameSceneCapabilities interface (hasLever / bindLever / setReelStops) */
@@ -233,10 +223,6 @@ function adjustSceneUi(entry: GameSceneCatalogEntry, serverConnected: boolean): 
 	console.info(`adjustSceneUi: "${entry.title}" loaded, server=${serverConnected}`);
 }
 
-function extractReelStopKeys(symbols: string[][]): number[] {
-	return symbols.map((reel) => Number(reel[1]));
-}
-
 async function changeScene(newScene: Scene): Promise<void> {
 	if (currentScene) {
 		if (currentScene instanceof MainGameScene) {
@@ -274,7 +260,7 @@ async function initHUD(): Promise<void> {
 }
 
 function setupBetControls(initResponse: IInitResponse | null): void {
-	const maxBet = initResponse?.max_bet ?? DEFAULT_MAX_BET;
+	const maxBet = initResponse?.maxBet ?? DEFAULT_MAX_BET;
 
 	gameHUD.setBetLimits(DEFAULT_MIN_BET, maxBet);
 	gameHUD.setBet(currentBet);
@@ -330,12 +316,12 @@ async function onLeverTriggered(): Promise<void> {
 			await currentScene.startSpinning();
 			const result = await gameClient.fetchSpin({ bet: currentBet });
 			balancePresenter.onSpinResponse(result.wallet);
-			const reelStops = extractReelStopKeys(result.symbols);
+			const reelStops = result.symbols;
 			await currentScene.stopSpinning(reelStops);
 
 			if (result.isWin) {
 				balancePresenter.onReelsStopped({
-					durationMs: estimateWinBalanceDurationMs(result.winAmount, COIN_WAVE_DELAY_MS, COIN_WAVE_TAIL_DELAY_MS),
+					durationMs: result.winAmount * 100,
 				});
 				await currentScene.playWin(result.winAmount);
 			} else {

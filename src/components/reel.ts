@@ -22,10 +22,11 @@ export class Reel extends Container {
 	) {
 		super();
 
-		if (symbols.size === 0) throw new Error('Reel symbols count can not be = 0');
+		if (symbols.size < 3) throw new Error('Reel symbols count can not be < 3');
 
+		let i = 0;
 		this.totalHeight = symbols.size * symbolSize;
-		let posY: number = (visibleHeight - symbolSize) / 2;
+		let posY: number = visibleHeight / 2 - symbolSize * 1.5;
 		for (const [key, texture] of symbols) {
 			const sprite = new Sprite(texture);
 			sprite.setSize(symbolSize, symbolSize);
@@ -34,13 +35,12 @@ export class Reel extends Container {
 			if (posY > visibleHeight) posY -= this.totalHeight;
 			this.symbols.set(key, sprite);
 			this.addChild(sprite);
+			if (i++ === 1) this.stopKey = key;
 		}
 
 		const mask = new Graphics().rect(0, 0, symbolSize, visibleHeight).fill({ color: 0x000000 });
 		this.addChild(mask);
 		this.setMask({ mask });
-
-		this.stopKey = this.symbols.keys().next().value;
 	}
 
 	public startSpin(): void {

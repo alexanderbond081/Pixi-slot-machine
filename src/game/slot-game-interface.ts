@@ -32,19 +32,21 @@ export const WalletScheme = z.object({
 // init query objects
 export interface IInitQuery {
 	token: string;
-	game_id: string;
+	gameId: string;
 }
 
 export const InitQueryScheme = z.object({
 	token: nonEmptyString,
-	game_id: nonEmptyString,
+	gameId: nonEmptyString,
 });
 
 export interface IInitResponse {
 	player: IPlayer;
 	wallet: IWallet;
-	game_id: string;
-	max_bet: number;
+	gameId: string;
+	maxBet: number;
+	/** Symbol ids in atlas / texture order — not derived from paytable or visible matrix */
+	symbolIds: string[];
 	symbols: string[][];
 	error?: string;
 }
@@ -52,8 +54,9 @@ export interface IInitResponse {
 export const InitResponseScheme = z.object({
 	player: PlayerScheme,
 	wallet: WalletScheme,
-	game_id: nonEmptyString,
-	max_bet: nonNegativeInt,
+	gameId: nonEmptyString,
+	maxBet: nonNegativeInt,
+	symbolIds: z.array(nonEmptyString),
 	symbols: z.array(z.array(nonEmptyString)),
 	error: z.string().optional(),
 });

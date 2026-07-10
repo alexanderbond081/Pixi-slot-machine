@@ -39,10 +39,10 @@ export class MockSlotServer {
 			return this.buildInitError(parsedQuery.error.message);
 		}
 
-		const game = gameRegistry.resolve(parsedQuery.data.game_id);
+		const game = gameRegistry.resolve(parsedQuery.data.gameId);
 
 		if (!game) {
-			return this.buildInitError(`Unknown game_id: ${parsedQuery.data.game_id}`, parsedQuery.data.game_id);
+			return this.buildInitError(`Unknown gameId: ${parsedQuery.data.gameId}`, parsedQuery.data.gameId);
 		}
 
 		this.activeGame = game;
@@ -55,8 +55,9 @@ export class MockSlotServer {
 		return {
 			player: { ...this.player },
 			wallet: this.readWallet(),
-			game_id: game.gameId,
-			max_bet: game.maxBet,
+			gameId: game.gameId,
+			maxBet: game.maxBet,
+			symbolIds: [...game.symbolIds],
 			symbols: cloneReelMatrix(this.reelStates[game.gameId]),
 		};
 	}
@@ -149,8 +150,9 @@ export class MockSlotServer {
 		return {
 			player: { ...this.player },
 			wallet: this.readWallet(),
-			game_id: resolvedGameId,
-			max_bet: this.activeGame?.maxBet ?? 0,
+			gameId: resolvedGameId,
+			maxBet: this.activeGame?.maxBet ?? 0,
+			symbolIds: this.activeGame ? [...this.activeGame.symbolIds] : [],
 			symbols,
 			error: message,
 		};

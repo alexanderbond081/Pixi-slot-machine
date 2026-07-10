@@ -20,7 +20,7 @@ export class BalancePresenter {
 	private phase: BalancePhase = 'idle';
 	private pendingRevealWallet: IWallet | null = null;
 
-	constructor(private readonly hud: GameHUD) {}
+	constructor(private readonly hud: GameHUD) { }
 
 	public getWallet(): IWallet {
 		return { ...this.authoritativeWallet };
@@ -111,11 +111,5 @@ export class BalancePresenter {
 		this.hud.animateBalanceTo(this.authoritativeWallet.balance, durationMs);
 	}
 }
-
-export const estimateWinBalanceDurationMs = (winAmount: number, coinWaveDelayMs: number, coinWaveTailDelayMs: number): number => {
-	const waves = Math.ceil(winAmount / 10);
-
-	return waves * (10 * coinWaveDelayMs + coinWaveTailDelayMs);
-};
 
 export { LOSS_REVEAL_DURATION_MS };

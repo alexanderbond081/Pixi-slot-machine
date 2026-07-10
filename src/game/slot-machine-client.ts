@@ -13,6 +13,7 @@ export class SlotMachineClient {
 
 	public async fetchInit(query: IInitQuery): Promise<IInitResponse> {
 		const response = await this.server.handleInit(query);
+		//console.log(response); // !! debug
 		return InitResponseScheme.parse(response);
 	}
 

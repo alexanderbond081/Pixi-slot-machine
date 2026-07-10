@@ -3,6 +3,7 @@ import { buildMatrixFromStrips, createMiddleRowPaylineEvaluator, rollStopKeys } 
 
 const config = {
 	gameId: 'slot_foo',
+	symbolIds: ['A', 'B', 'C'],
 	reelStrips: [
 		['A', 'B', 'C'],
 		['B', 'A', 'C'],
@@ -25,6 +26,7 @@ export const slotFoo: GameDefinition = {
 	gameId: config.gameId,
 	maxBet: config.maxBet,
 	paytable: config.paytable,
+	symbolIds: config.symbolIds,
 
 	createInitialMatrix(): string[][] {
 		return buildMatrixFromStrips(config.reelStrips, config.initialStopKeys);

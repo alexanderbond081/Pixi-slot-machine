@@ -21,15 +21,17 @@ export class MainGameScene extends Scene {
 	private fliesContainer!: ParticleContainer;
 
 	private reels: Reel[] = [];
-	private symbolKeys: any[] = [1, 2, 3];
 	private coins: Coin[] = [];
 
 	private owl!: SpineDisplay;
 	private owlStress: number = 0;
 
-	constructor(symbolKeys: any[] = [1, 2, 3]) {
+	constructor(
+		private symbolKeys: any[] = [1, 2, 3],
+		private symbolMatrix: any[][] | null = null,
+	) {
 		super();
-		this.symbolKeys = [...symbolKeys];
+		//this.symbolKeys = [...symbolKeys];
 	}
 
 	// public initializers
@@ -39,7 +41,7 @@ export class MainGameScene extends Scene {
 		await this.addBackground();
 		await this.addLogo();
 		await this.addSpineAnimation();
-		await this.addFlyes();
+		await this.addFlies();
 		await this.addReels();
 		await this.addLever();
 		await this.addFrame();
@@ -64,7 +66,7 @@ export class MainGameScene extends Scene {
 		await delay(500);
 	}
 
-	public async stopSpinning(reelSymbols: any[]): Promise<void> {
+	public async stopSpinning(reelSymbols: any[][]): Promise<void> {
 		if (reelSymbols.length !== this.reels.length) {
 			console.warn('reelSymbols length mismatch', reelSymbols.length, this.reels.length);
 		}
@@ -88,7 +90,7 @@ export class MainGameScene extends Scene {
 		);
 
 		for (let i = 0; i < this.reels.length; i++) {
-			const symbol = reelSymbols[i] ?? reelSymbols[0];
+			const symbol = reelSymbols[i][1] ?? this.symbolKeys[0];
 
 			if (i > 0) {
 				await delay(700);
@@ -182,7 +184,7 @@ export class MainGameScene extends Scene {
 		this.logoSprite.y = 6 * this.calcScale();
 	}
 
-	private async addFlyes(): Promise<void> {
+	private async addFlies(): Promise<void> {
 		const flyTexture = await Assets.load('firefly');
 		this.fliesContainer = new ParticleContainer({
 			dynamicProperties: {
@@ -202,11 +204,11 @@ export class MainGameScene extends Scene {
 			this.flies.push(aFly);
 			this.fliesContainer.addParticle(aFly);
 		}
-		this.adjustFlyes();
+		this.adjustFlies();
 		this.addChild(this.fliesContainer);
 	}
 
-	private adjustFlyes(): void {
+	private adjustFlies(): void {
 		this.fliesContainer.scale = this.calcScale();
 		// !! test if we need to update each fly trajectory
 		this.fliesContainer.update();
@@ -215,15 +217,23 @@ export class MainGameScene extends Scene {
 	private async addReels(): Promise<void> {
 		const symbolsSheet = await Assets.load<Spritesheet>('symbols');
 		const textures: Texture[] = Object.values(symbolsSheet.textures);
-		const orders: number[][] = [[0, 1, 2], [1, 0, 2], [2, 1, 0]];
+
+		if (!this.symbolMatrix) {
+			const defaultOrder = [[0, 1, 2], [1, 0, 2], [2, 1, 0]];
+			this.symbolMatrix = Array.from(defaultOrder, row =>
+				row.map(index => this.symbolKeys[index])
+			);
+		}
 
 		let posX: number = 140;
 		let speed: number = 20;
 		const minSpeed: number = 8;
-		for (let order of orders) {
-			const reorderedMap = new Map<number, Texture>();
-			for (let i of order) {
-				reorderedMap.set(this.symbolKeys[i], textures[i]);
+
+		for (let symbols of this.symbolMatrix) {
+			const reorderedMap = new Map<any, Texture>();
+			for (let key of symbols) {
+				let i = this.symbolKeys.indexOf(key);
+				reorderedMap.set(key, textures[i]);
 			};
 
 			let reel = new Reel(90, 150, speed, minSpeed, reorderedMap);
@@ -397,7 +407,7 @@ export class MainGameScene extends Scene {
 		this.adjustBackground();
 		this.adjustLogo();
 		this.adjustSpineAnimation();
-		this.adjustFlyes();
+		this.adjustFlies();
 		this.adjustTheMachine();
 	}
 }

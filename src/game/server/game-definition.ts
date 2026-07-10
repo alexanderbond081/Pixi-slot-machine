@@ -14,6 +14,8 @@ export interface GameDefinition {
 	readonly gameId: string;
 	readonly maxBet: number;
 	readonly paytable: MiddleRowPaytable;
+	/** Symbol ids in client atlas order — includes non-paying symbols */
+	readonly symbolIds: readonly string[];
 	createInitialMatrix(): ReelMatrix;
 	rollMatrix(): ReelMatrix;
 	evaluatePayline(matrix: ReelMatrix): SpinOutcome;

@@ -11,7 +11,8 @@ export const formatBuildLabel = (): string => {
 		return `v${BUILD_INFO.version} · dev · ${BUILD_INFO.gitSha}${dirtyMark}`;
 	}
 
-	return `v${BUILD_INFO.version} · ${BUILD_INFO.channel} · ${BUILD_INFO.gitSha}${dirtyMark} · ${BUILD_INFO.buildId}`;
+	const head = `v${BUILD_INFO.version} · ${BUILD_INFO.channel} · ${BUILD_INFO.gitSha}${dirtyMark}`;
+	return `${head}\n${BUILD_INFO.buildId}`;
 };
 
 export const logBuildInfo = (): void => {
@@ -28,6 +29,7 @@ export const createVersionLabel = (): Text => {
 			fontFamily: 'monospace',
 			fontSize: 12,
 			fill: VERSION_TEXT_FILL,
+			align: 'center',
 			dropShadow: {
 				alpha: 0.95,
 				angle: -Math.PI / 2,
@@ -38,6 +40,7 @@ export const createVersionLabel = (): Text => {
 		}),
 	});
 
+	label.anchor.set(0.5);
 	label.eventMode = 'none';
 
 	return label;

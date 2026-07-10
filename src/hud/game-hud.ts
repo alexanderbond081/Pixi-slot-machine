@@ -10,7 +10,7 @@ import { HUD } from './hud';
 const PANEL_MARGIN = 8;
 
 const SOUND_BUTTON_LEFT = 42;
-const INFO_BUTTON_LEFT = 106
+const INFO_BUTTON_LEFT = 106;
 
 const INFO_LABEL_LEFT = 180;
 const INFO_PANEL_HEIGHT = 60;
