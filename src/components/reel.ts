@@ -4,10 +4,18 @@ export enum ReelState { STOPPED, STARTING, SPINNING, STOPPING, CLICKED, FINALADJ
 
 export class Reel extends Container {
 	private symbols: Map<any, Sprite> = new Map();
-	private totalHeight: number;
 	private stopKey: any;
 	private currentSpeed: number = 0;
 	private _state: ReelState = ReelState.STOPPED;
+
+	private totalHeight: number = 0;
+	private stopPosition: number = 0;
+	private microBounce: number = 0;
+
+	private wayToStop: number = 0;
+	private framesToStop: number = 40;
+	private stopFramesCount: number = 0;
+	private stopDecelerationCoeff: number = 30;
 
 	public get state(): ReelState {
 		return this._state;
@@ -26,6 +34,9 @@ export class Reel extends Container {
 
 		let i = 0;
 		this.totalHeight = symbols.size * symbolSize;
+		this.stopPosition = visibleHeight / 2 - symbolSize / 2; // symbols.size / 4;
+		this.microBounce = minSpeed / 2;
+
 		let posY: number = visibleHeight / 2 - symbolSize * 1.5;
 		for (const [key, texture] of symbols) {
 			const sprite = new Sprite(texture);
@@ -37,6 +48,7 @@ export class Reel extends Container {
 			this.addChild(sprite);
 			if (i++ === 1) this.stopKey = key;
 		}
+
 
 		const mask = new Graphics().rect(0, 0, symbolSize, visibleHeight).fill({ color: 0x000000 });
 		this.addChild(mask);
@@ -55,15 +67,12 @@ export class Reel extends Container {
 			return;
 		}
 
-		const totalHeight = this.symbols.size * this.symbolSize;
-		const stopPosition = this.symbolSize / 4;
-		const microBounce = this.symbolSize / 50;
 		let reelPosition: number = 0;
 
 		for (const sprite of this.symbols.values()) {
 			sprite.y += this.currentSpeed * deltaTime;
 			if (sprite.y >= this.visibleHeight) {
-				sprite.y -= totalHeight;
+				sprite.y -= this.totalHeight;
 			}
 		}
 
@@ -75,9 +84,8 @@ export class Reel extends Container {
 				if (symbol) {
 					reelPosition = symbol.y;
 				} else {
-					console.warn(`No reel symbol corresponds the key: ${this.stopKey}`);
 					this._state = ReelState.STOPPED;
-					this.emit('reelStopped', { timestamp: Date.now() });
+					this.emit('reelStopped');
 					return;
 				}
 		}
@@ -107,10 +115,30 @@ export class Reel extends Container {
 				break;
 
 			case ReelState.STOPPING:
-				if (this.currentSpeed > this.minSpeed) {
-					decreaseCurrentSpeed(this.currentSpeed / 30);
+				this.stopFramesCount++;
+				this.wayToStop -= this.currentSpeed * deltaTime;
 
-				} else if (reelInPosition(stopPosition + microBounce)) {
+				if (this.currentSpeed > this.minSpeed) {
+					// !! in progress
+
+					// linear breaking - stop animation frames (and time) vary from 29 to 55
+					//decreaseCurrentSpeed(this.currentSpeed / this.stopDecelerationCoeff);
+
+					// adaptive breaking - exactly 40 frames animation, but pinning speed can be not perfectly smooth
+					const framesLeft = Math.max(this.framesToStop - this.stopFramesCount, 1);
+					const idealSpeed = this.wayToStop / framesLeft;
+					const targetSpeed = Math.max(this.minSpeed, idealSpeed);
+					const stopSmoothing = 0.15;
+					this.currentSpeed += (targetSpeed - this.currentSpeed) * stopSmoothing;
+
+				} else {
+					this.currentSpeed = this.minSpeed;
+				}
+
+				if (this.wayToStop <= 0) { //if (reelInPosition(this.stopPosition + this.microBounce)) {
+					// set exact microbounce position
+					this.adjustSymbolsPos(this.stopKey, this.stopPosition + this.microBounce);
+
 					// roll back for final adjustment
 					this.currentSpeed = -this.minSpeed;
 					this._state = ReelState.CLICKED;
@@ -118,25 +146,29 @@ export class Reel extends Container {
 				break;
 
 			case ReelState.CLICKED:
-				if (reelPosition > (stopPosition - microBounce)) {
+				if (reelPosition > (this.stopPosition - this.microBounce)) {
 					// in case of unstable or huge fps roll back little bit further
 				} else {
-					this.currentSpeed = microBounce;
+					this.currentSpeed = this.microBounce;
 					this._state = ReelState.FINALADJUST;
 					this.emit('reelClicked');
+					// !! debug
+					//console.log('reel', this.stopKey, 'stopped after', Math.round(this.stopWayPassed), ', frames', this.stopFramesCount);  // !! debug
 				}
 				break;
 
 			case ReelState.FINALADJUST:
-				if (reelInPosition(stopPosition)) {
+				if (reelInPosition(this.stopPosition)) {
 					this.currentSpeed = 0;
+					// set perfect stop position
+					this.adjustSymbolsPos(this.stopKey, this.stopPosition);
 					this._state = ReelState.STOPPED;
 					this.emit('reelStopped');
 				}
 				break;
 
 			default:
-				console.warn('Reel unknown state', this._state)
+				console.warn('Reel unknown state', this._state);
 				this._state = ReelState.STOPPED;
 		}
 	}
@@ -145,7 +177,36 @@ export class Reel extends Container {
 		if (this._state !== ReelState.SPINNING) {
 			return;
 		}
+		const symbol = this.symbols.get(key);
+		if (!symbol) {
+			console.warn(`No reel symbol corresponds the key: ${key}`);
+			this._state = ReelState.STOPPED;
+			this.emit('reelStopped');
+			return;
+		}
+
 		this.stopKey = key;
 		this._state = ReelState.STOPPING;
+		this.wayToStop = this.totalHeight * 2 + this.stopPosition + this.microBounce - symbol.y;
+		this.framesToStop = 40;
+		this.stopFramesCount = 0;
+
+		// !! for linear breaking - full stop animation frames vary from 29 to 55
+		const speedDelta = Math.max(this.currentSpeed - this.minSpeed, 0.5);
+		this.stopDecelerationCoeff = this.wayToStop / speedDelta;
+	}
+
+	private adjustSymbolsPos(key: any, pos: number) {
+		// !! to be optimized
+		let index = [...this.symbols.keys()].indexOf(key);
+		let posY = pos - index * this.symbolSize;
+		if (posY < 0) posY += this.totalHeight;
+		for (const sprite of this.symbols.values()) {
+			sprite.y = posY;
+			if (sprite.y >= this.visibleHeight) {
+				sprite.y -= this.totalHeight;
+			}
+			posY += this.symbolSize;
+		}
 	}
 }
