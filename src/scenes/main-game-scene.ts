@@ -1,5 +1,4 @@
 import { Sprite, Texture, Container, Assets, Spritesheet, AnimatedSprite, Graphics, ParticleContainer } from 'pixi.js';
-import { gsap } from 'gsap';
 import { Scene } from './scene';
 import { AnotherFly } from '../components/particle-fly';
 import { Coin, CoinThrowOptions } from '../components/coin';
@@ -7,8 +6,6 @@ import { Reel, ReelState } from '../components/reel';
 import { Spine } from '@esotericsoftware/spine-pixi-v8';
 import { SoundManager } from '../managers/sound-manager';
 import { SpineDisplay } from '../components/spine-display';
-import { UIButton } from '../components/ui-button';
-import { HighlightDecoration } from '../components/highlight-decoration';
 
 export class MainGameScene extends Scene {
 	private bgSprite!: Sprite;
@@ -18,23 +15,21 @@ export class MainGameScene extends Scene {
 	private leverAnimated!: AnimatedSprite;
 	private leverButton!: Graphics;
 
-	private soundButtonSheet!: Spritesheet;
-	private soundButton!: UIButton;
-	private isClickBlocked: boolean = false;
-
 	private flies: AnotherFly[] = [];
 	private fliesContainer!: ParticleContainer;
 
 	private reels: Reel[] = [];
-	private symbolKeys: any[] = [1, 2, 3];
 	private coins: Coin[] = [];
 
 	private owl!: SpineDisplay;
 	private owlStress: number = 0;
 
-	constructor(symbolKeys: any[] = [1, 2, 3]) {
+	constructor(
+		private symbolKeys: any[] = [1, 2, 3],
+		private symbolMatrix: any[][] | null = null,
+	) {
 		super();
-		this.symbolKeys = [...symbolKeys];
+		//this.symbolKeys = [...symbolKeys];
 	}
 
 	// public initializers
@@ -44,13 +39,12 @@ export class MainGameScene extends Scene {
 		await this.addBackground();
 		await this.addLogo();
 		await this.addSpineAnimation();
-		await this.addFlyes();
+		await this.addFlies();
 		await this.addReels();
 		await this.addLever();
 		await this.addFrame();
 		await this.addLeverButton();
 		await this.addCoins();
-		await this.addSoundButton();
 
 		SoundManager.playMusic('bg-music-fantasy');
 		SoundManager.playAmbience('ambience');
@@ -67,10 +61,10 @@ export class MainGameScene extends Scene {
 		this.leverPlayAnimation('pull', 0.3);
 		SoundManager.playSound('lever-sfx');
 		this.owl.playAnimation('down', 1, true);
-		await new Promise(resolve => setTimeout(resolve, 500));
+		await delay(500);
 	}
 
-	public async stopSpinning(reelSymbols: any[]): Promise<void> {
+	public async stopSpinning(reelSymbols: any[][]): Promise<void> {
 		if (reelSymbols.length !== this.reels.length) {
 			console.warn('reelSymbols length mismatch', reelSymbols.length, this.reels.length);
 		}
@@ -81,19 +75,23 @@ export class MainGameScene extends Scene {
 					resolve();
 					return;
 				}
-				reel.once('reelStopped', () => {
+
+				reel.once('reelClicked', () => {
 					SoundManager.stopSound('reel-spin');
 					SoundManager.playSound('slot-in');
+				});
+
+				reel.once('reelStopped', () => {
 					resolve();
 				});
 			}),
 		);
 
 		for (let i = 0; i < this.reels.length; i++) {
-			const symbol = reelSymbols[i] ?? reelSymbols[0];
+			const symbol = reelSymbols[i][1] ?? this.symbolKeys[0];
 
 			if (i > 0) {
-				await new Promise(resolve => setTimeout(resolve, 700));
+				await delay(700);
 			}
 
 			this.reels[i].stopSpin(symbol);
@@ -105,22 +103,26 @@ export class MainGameScene extends Scene {
 	}
 
 	public async playBlocked(): Promise<void> {
+		SoundManager.playSound('lever-blocked', 3);
 		this.leverPlayAnimation('blocked', 0.3);
-		// !! await leverPlayAnimation to be implemented
-		await new Promise(resolve => setTimeout(resolve, 500));
+		await delay(500);
+		this.owlAddStress(1);
 	}
 
-	public async playWin(): Promise<void> {
+	public async playWin(winAmount: number): Promise<void> {
 		SoundManager.playSound('win-sfx');
-		SoundManager.playSound('coin-spray-sfx');
 		this.owl.playAnimation('left', 1, true);
 		this.owlStress = 0;
-		await this.playCoinsSpread();
+		for (let i = winAmount; i > 0; i -= 10) {
+			SoundManager.playSound('coin-spray-sfx', 3);
+			await this.playCoinsSpread(i < 10 ? i : 10);
+		}
+
 		this.owl.playAnimation('blink', 2, false);
 	}
 
 	public async playLost(): Promise<void> {
-		this.owlAddStress();
+		this.owlAddStress(0.5);
 	}
 
 	public isSpinning(): boolean {
@@ -175,12 +177,12 @@ export class MainGameScene extends Scene {
 	}
 
 	private adjustLogo(): void {
-		this.logoSprite.scale = 0.4 * this.calcScale();
-		this.logoSprite.x = Scene.viewportWidth - this.logoSprite.width - 3 * this.calcScale();
-		this.logoSprite.y = Scene.viewportHeight - this.logoSprite.height;
+		this.logoSprite.scale = 0.3 * this.calcScale();
+		this.logoSprite.x = 5 * this.calcScale();
+		this.logoSprite.y = 6 * this.calcScale();
 	}
 
-	private async addFlyes(): Promise<void> {
+	private async addFlies(): Promise<void> {
 		const flyTexture = await Assets.load('firefly');
 		this.fliesContainer = new ParticleContainer({
 			dynamicProperties: {
@@ -200,11 +202,11 @@ export class MainGameScene extends Scene {
 			this.flies.push(aFly);
 			this.fliesContainer.addParticle(aFly);
 		}
-		this.adjustFlyes();
+		this.adjustFlies();
 		this.addChild(this.fliesContainer);
 	}
 
-	private adjustFlyes(): void {
+	private adjustFlies(): void {
 		this.fliesContainer.scale = this.calcScale();
 		// !! test if we need to update each fly trajectory
 		this.fliesContainer.update();
@@ -213,15 +215,23 @@ export class MainGameScene extends Scene {
 	private async addReels(): Promise<void> {
 		const symbolsSheet = await Assets.load<Spritesheet>('symbols');
 		const textures: Texture[] = Object.values(symbolsSheet.textures);
-		const orders: number[][] = [[0, 1, 2], [1, 0, 2], [2, 1, 0]];
+
+		if (!this.symbolMatrix) {
+			const defaultOrder = [[0, 1, 2], [1, 0, 2], [2, 1, 0]];
+			this.symbolMatrix = Array.from(defaultOrder, row =>
+				row.map(index => this.symbolKeys[index])
+			);
+		}
 
 		let posX: number = 140;
 		let speed: number = 20;
 		const minSpeed: number = 8;
-		for (let order of orders) {
-			const reorderedMap = new Map<number, Texture>();
-			for (let i of order) {
-				reorderedMap.set(this.symbolKeys[i], textures[i]);
+
+		for (let symbols of this.symbolMatrix) {
+			const reorderedMap = new Map<any, Texture>();
+			for (let key of symbols) {
+				let i = this.symbolKeys.indexOf(key);
+				reorderedMap.set(key, textures[i]);
 			};
 
 			let reel = new Reel(90, 150, speed, minSpeed, reorderedMap);
@@ -233,7 +243,6 @@ export class MainGameScene extends Scene {
 			this.theMachine.addChild(reel);
 		};
 	}
-
 
 	private async addFrame(): Promise<void> {
 		const frameTexture = await Assets.load(`reels-frame`);
@@ -248,7 +257,7 @@ export class MainGameScene extends Scene {
 		this.theMachine.scale = scale;
 		this.theMachine.x = (Scene.viewportWidth - this.theMachine.width) * 0.5;
 		// the slot machine frame has a shadow on it's bottom - no need to shift it from the edge
-		this.theMachine.y = (Scene.viewportHeight - this.theMachine.height);
+		this.theMachine.y = (Scene.viewportHeight - this.theMachine.height) * 0.6;
 	}
 
 	private leverPlayAnimation(name: string = 'idle', speed: number = 0.2): void {
@@ -279,12 +288,14 @@ export class MainGameScene extends Scene {
 		};
 	}
 
-	private async playCoinsSpread(): Promise<void> {
+	private async playCoinsSpread(count: number = 10): Promise<void> {
+		let i = count;
 		for (const coin of this.coins) {
 			coin.throw(this.randomiseCoinThrowTrajectory());
-			await new Promise(resolve => setTimeout(resolve, 100));
+			await delay(100);
+			if (--i <= 0) break;
 		}
-		await new Promise(resolve => setTimeout(resolve, 300));
+		await delay(100);
 	}
 
 	private async addLever(): Promise<void> {
@@ -333,7 +344,7 @@ export class MainGameScene extends Scene {
 		this.owl.eventMode = 'static';
 		this.owl.cursor = 'pointer';
 		this.owl.on('pointerdown', () => {
-			this.owlAddStress(0.5);
+			this.owlAddStress(0.1);
 		});
 
 		this.addChild(this.owl);
@@ -351,6 +362,8 @@ export class MainGameScene extends Scene {
 		if ((Math.random() * 0.4 + this.owlStress * 0.2) > 0.99) {
 			this.owl.playAnimation('up', 1, true, 1);
 			SoundManager.playSound('owl-voice');
+			this.owlDropCoin();
+			this.emit('cheatACoin');
 			this.owlStress = 0;
 		} else {
 			this.owl.playAnimation('blink', (amount < 1) ? 2 : 0.2, false, 3.5);
@@ -358,35 +371,21 @@ export class MainGameScene extends Scene {
 		}
 	}
 
-	private async addSoundButton(): Promise<void> {
-		this.soundButtonSheet = await Assets.load<Spritesheet>('sound-button-brown');
-		const decorator = new HighlightDecoration(0.8);
-		this.soundButton = new UIButton(this.soundButtonSheet, 'sound-on', 42, 42, decorator);
-		this.adjustSoundButton();
-		this.addChild(this.soundButton);
-
-		this.soundButton.on('pointertap', () => {
-			if (this.isClickBlocked) return;
-
-			if (SoundManager.toggleGlobal()) {
-				this.soundButton.setTexture('sound-off');
-			} else {
-				this.soundButton.setTexture('sound-on');
-			}
-
-			this.isClickBlocked = true;
-			gsap.delayedCall(0.15, () => {
-				this.isClickBlocked = false;
-			});
-		});
-	}
-
-	private adjustSoundButton(): void {
-		const baseSize = this.soundButton.baseWidth;
+	private owlDropCoin(): void {
 		const scale = this.calcScale();
-		this.soundButton.x = (24 + baseSize / 2) * scale;
-		this.soundButton.y = (20 + baseSize / 2) * scale;
-		this.soundButton.adjustScale(scale, scale);
+		const x = this.owl.x;
+		const y = this.owl.y;
+		this.coins[0].throw({
+			x,
+			y,
+			scale: 0.1 * scale,
+			speedX: 0,
+			speedY: 0,
+			speedScale: 0,
+			spinSpeed: 0,
+			floor: Scene.viewportHeight,
+			gravity: 0.98 * scale
+		});
 	}
 
 	private async addCoins(): Promise<void> {
@@ -406,8 +405,7 @@ export class MainGameScene extends Scene {
 		this.adjustBackground();
 		this.adjustLogo();
 		this.adjustSpineAnimation();
-		this.adjustFlyes();
+		this.adjustFlies();
 		this.adjustTheMachine();
-		this.adjustSoundButton();
 	}
 }

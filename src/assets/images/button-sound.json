@@ -4,16 +4,16 @@
 			"frame": {
 				"x": 0,
 				"y": 0,
-				"w": 216,
-				"h": 216
+				"w": 130,
+				"h": 130
 			}
 		},
 		"sound-off": {
 			"frame": {
-				"x": 216,
+				"x": 131,
 				"y": 0,
-				"w": 216,
-				"h": 216
+				"w": 130,
+				"h": 130
 			}
 		}
 	},
@@ -26,7 +26,7 @@
 		]
 	},
 	"meta": {
-		"image": "sound-button-brown.png",
+		"image": "button-sound.png",
 		"scale": "1"
 	}
 }
