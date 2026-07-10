@@ -1,15 +1,18 @@
 # Another HTML5 Slot Machine Game Demo
 
-A browser-based slot machine demo built with **Pixi.js v8**, **TypeScript**, **GSAP**, and **Spine** skeletal animations. The project showcases reel spinning mechanics, win/lose feedback, ambient audio, and a scene-based loading flow.
+A browser-based slot machine demo built with **Pixi.js v8**, **TypeScript**, **GSAP**, and **Spine** skeletal animations. The project showcases reel spinning mechanics, server-driven game state, wallet persistence, HUD controls, win/lose feedback, ambient audio, and a scene-based loading flow.
 
 ## Features
 
 - **Three independent reels** with acceleration, deceleration, and a micro-bounce stop animation
-- **Mock server spin results** — symbol outcomes and win detection are simulated asynchronously (no client-side cheat logic on the final design path)
+- **Mock game server** — init/spin API with Zod-validated contracts; symbol outcomes, paytable evaluation, and wallet settlement run server-side (no client-side cheat logic on the final design path)
+- **Wallet persistence** — balance stored in `localStorage` with `lastTransactionIndex` for stale snapshot rejection
+- **HUD** — balance display with animated debit/credit, bet controls (+/−), sound/info buttons, build version label
+- **Scene catalog** — entries map scene id → asset bundle → optional `gameId`; factory passes server `symbolIds` and reel matrix into the scene constructor
 - **Spine animations** — owl character reactions and coin burst particles on win
 - **Layered audio** — separate music, ambience, and SFX buses via `@pixi/sound`; per-reel spin sounds with staggered stop clicks
 - **Scene flow** — preload splash → loading screen with progress bar → main game, with GSAP fade transitions
-- **UI button feedback** — `UIButton` with pluggable `MouseActionDecoration` (sound toggle uses `HighlightDecoration`: hover highlight, press tint, elastic tap)
+- **UI button feedback** — `UIButton` with pluggable decorations (`HighlightDecoration`: hover highlight, press tint, elastic tap)
 - **Input** — pull the lever (click) or press **Space** / **Enter**
 
 ## Tech Stack
@@ -20,6 +23,7 @@ A browser-based slot machine demo built with **Pixi.js v8**, **TypeScript**, **G
 | Language | TypeScript (strict) |
 | Animation | Spine (`@esotericsoftware/spine-pixi-v8`), [GSAP](https://gsap.com/) v3 + PixiPlugin |
 | Audio | `@pixi/sound` |
+| Validation | [Zod](https://zod.dev/) (API contracts) |
 | Bundler | Webpack 5 |
 
 ## Requirements
@@ -65,35 +69,49 @@ docker run --rm -p 8080:80 slot-game-demo
 
 ```
 src/
-├── index.ts                      # App bootstrap, GSAP/PixiPlugin setup, scene switching
-├── assets/                       # Images, sounds, Spine data, asset manifest
+├── index.ts                      # App bootstrap, scene loading, spin flow orchestration
+├── version.ts                      # Build label formatting for HUD and console
+├── assets/                         # Images, sounds, Spine data, asset manifest
 ├── components/
-│   ├── ui-button.ts              # Interactive UI button (Decoratable)
-│   ├── highlight-decoration.ts   # Hover / press / tap GSAP effects
-│   ├── mouse-action-decoration.ts
-│   ├── decoratable.ts
-│   ├── reel.ts, coin.ts, spine-display.ts, particle-fly.ts
+│   ├── reel.ts, coin.ts            # Reel physics and coin particles
+│   ├── ui-button.ts                # Interactive UI button (Decoratable)
+│   ├── highlight-decoration.ts     # Hover / press / tap GSAP effects
+│   └── spine-display.ts            # Spine animation wrapper
 ├── game/
-│   └── slot-machine-model.ts     # Mock spin API
+│   ├── slot-game-interface.ts      # IInitResponse, ISpinResponse, Zod schemas
+│   ├── slot-machine-client.ts      # Client wrapper around mock server
+│   ├── pay-client.ts               # External wallet credit (mock pay service)
+│   └── server/
+│       ├── mock-slot-server.ts     # Init / spin handlers
+│       ├── mock-persistence.ts     # Wallet ledger + session store (localStorage)
+│       ├── game-definition.ts      # GameDefinition interface
+│       └── games/                  # Per-game rules (slot_reels_3x3, …)
+├── hud/
+│   ├── game-hud.ts                 # Balance, bet, sound, version panel
+│   └── balance-presenter.ts        # Wallet display logic (debit / reveal / credit)
 ├── managers/
-│   └── sound-manager.ts          # Audio buses and playback
-└── scenes/                       # Preload, Loading, MainGame scenes
+│   ├── scenes-catalog.ts           # Scene entries and factories
+│   └── sound-manager.ts            # Audio buses and playback
+└── scenes/                         # Preload, Loading, MainGame scenes
 ```
 
 ## How to Play
 
 1. Wait for assets to load.
-2. Click the lever or press **Space** / **Enter** to spin.
-3. Reels stop one by one; a win triggers a coin spray and owl celebration.
-4. Use the sound button (top-left) to toggle audio.
+2. Adjust bet with **+** / **−** (within server `maxBet`).
+3. Click the lever or press **Space** / **Enter** to spin.
+4. Reels stop one by one; a win triggers a coin spray and owl celebration.
+5. Use the sound button (top-left) to toggle audio.
+6. Balance persists across page reloads (mock wallet in `localStorage`).
 
 ## Development Notes
 
 - Assets are loaded through Pixi `Assets` bundles defined in `src/assets/manifest.json`.
 - Webpack aliases `pixi.js` to a single ESM entry point so Spine and the app share one Pixi instance.
-- Reel symbol keys originate from `SlotMachineModel` and are passed through the scene unchanged.
+- **Scene creation:** `loadGameScene` fetches server init, then calls the catalog factory with `symbolIds` (atlas order) and `symbols` (3×3 reel window). The scene applies this state in `addReels()`.
+- **Spin flow:** client debits balance visually → server `fetchSpin` → reels stop on payline keys from `result.symbols` → balance reveal animation.
 - GSAP `PixiPlugin` is registered in `index.ts` for scene fade effects and UI decorations.
-- `Filter.defaultOptions.resolution = 'inherit'` keeps ColorMatrix filters (contrast/brightness) sharp on high-DPI and zoomed pages.
+- `Filter.defaultOptions.resolution = 'inherit'` keeps ColorMatrix filters sharp on high-DPI and zoomed pages.
 - `npm run build` produces an optimized static bundle in `dist/` for deployment or Docker.
 
 ## Versioning & Releases
@@ -102,7 +120,7 @@ The game version lives in `package.json` (`version` field). Each `npm start` / `
 
 | Field | Meaning |
 |---|---|
-| `version` | SemVer from `package.json` (e.g. `1.0.0`) |
+| `version` | SemVer from `package.json` (e.g. `1.1.0`) |
 | `gitSha` | Short commit hash — identifies what is on GitHub |
 | `gitDirty` | `*` suffix if there are uncommitted local changes |
 | `mode` | `development` (local) or `production` (build) |
@@ -111,23 +129,23 @@ The game version lives in `package.json` (`version` field). Each `npm start` / `
 
 **Where to look:**
 
-- **Local dev** (`npm start`) — bottom-left overlay: `v1.0.0 · dev · abc1234*` and the same string in the browser console. `*` means uncommitted changes.
-- **GitHub** — check `package.json` version + `git log -1 --oneline`. Tag releases as `v1.0.0` to match the version field.
-- **itch.io build** — run `npm run build:itch`, then open `dist/BUILD.txt` or the in-game label: `v1.0.0 · itch · abc1234 · 20250701-143022`.
+- **Local dev** (`npm start`) — info panel (bottom bar): `v1.1.0 · dev · abc1234*` and the same string in the browser console. `*` means uncommitted changes.
+- **GitHub** — check `package.json` version + `git log -1 --oneline`. Tag releases as `v1.1.0` to match the version field.
+- **itch.io build** — run `npm run build:itch`, then open `dist/BUILD.txt` or the in-game label: `v1.1.0 itch 2026-07-10` (full details in console and `BUILD.txt`).
 
 ### Before a git commit
 
 1. Make sure the game runs: `npm start`.
 2. Bump version **only** when preparing a release or a public itch.io upload:
    ```bash
-   npm run version:patch   # 1.0.0 → 1.0.1 (bugfix)
-   npm run version:minor   # 1.0.0 → 1.1.0 (new feature)
-   npm run version:major   # 1.0.0 → 2.0.0 (breaking change)
+   npm run version:patch   # 1.1.0 → 1.1.1 (bugfix)
+   npm run version:minor   # 1.1.0 → 1.2.0 (new feature)
+   npm run version:major   # 1.1.0 → 2.0.0 (breaking change)
    ```
 3. Commit code **and** the updated `package.json` / `package-lock.json` together.
 4. For a release, add a git tag after the commit:
    ```bash
-   git tag v1.0.1
+   git tag v1.1.1
    ```
 
 Regular WIP commits do **not** require a version bump.
@@ -137,9 +155,9 @@ Regular WIP commits do **not** require a version bump.
 1. Commit (or stash) all changes — a dirty working tree shows `*` in the dev label and is harder to trace.
 2. If this push is a **release**, ensure the version was bumped and the tag exists:
    ```bash
-   git tag v1.0.1        # if not created yet
+   git tag v1.1.1        # if not created yet
    git push origin main
-   git push origin v1.0.1
+   git push origin v1.1.1
    ```
 3. For everyday pushes, just `git push` — no version bump needed.
 
@@ -151,22 +169,22 @@ Regular WIP commits do **not** require a version bump.
    ```bash
    npm run build:itch
    ```
-4. Verify `dist/BUILD.txt` — version, git hash, and build ID should look correct.
-5. Open `dist/index.html` locally (or use `npx serve dist`) and check the version label in the bottom-left corner.
+4. Verify `dist/BUILD.txt` — version, git hash, and build ID should look correct (no `*` = clean git).
+5. Open `dist/index.html` locally (`npx serve dist`) and smoke-test: spin, balance, reload persistence, version label.
 6. Upload the **entire** `dist/` folder to itch.io (HTML project).
 7. Tag the release on GitHub if you bumped the version:
    ```bash
-   git tag v1.0.1
-   git push origin v1.0.1
+   git tag v1.1.1
+   git push origin v1.1.1
    ```
 
 ## Roadmap (planned)
 
 - Responsive layout (`resize` wiring, browser zoom / DPR sync)
-- `src/config.ts` for shared constants
-- HUD layer
-- Balance / bet system
-
+- `IGameSceneCapabilities` — decouple `index.ts` from `MainGameScene` (`instanceof` stubs today)
+- Server error UX — emergency reel stop animation when spin/init fails
+- Additional catalog entries (1×3 thimbles, other reel layouts)
+- Real backend integration (replace mock server / pay client)
 
 ## Third-Party Assets & Credits
 

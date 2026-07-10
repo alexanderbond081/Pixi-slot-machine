@@ -26,8 +26,6 @@ PixiPlugin.registerPIXI(PIXI);
 const MOCK_TOKEN = 'mock';
 const DEFAULT_MIN_BET = 1;
 const DEFAULT_MAX_BET = 10;
-const COIN_WAVE_DELAY_MS = 100;
-const COIN_WAVE_TAIL_DELAY_MS = 100;
 
 const app = new Application();
 const walletLedger = new MockWalletLedger();
@@ -37,7 +35,7 @@ const gameHUD = new GameHUD();
 const balancePresenter = new BalancePresenter(gameHUD);
 
 const gameLayer = new Container();
-const hudLayer = new Container(); // !! top level UI to be implemented
+const hudLayer = new Container();
 const uiOverlay = new Container();
 const fadeRect = new Graphics();
 uiOverlay.addChild(fadeRect);
@@ -127,7 +125,6 @@ async function loadGameScene(sceneId: string): Promise<void> {
 		gameSceneAssets = '';
 	}
 
-	// ?? the only way?
 	const serverInitPromise = entry.gameId
 		? connectToGameServer(entry.gameId)
 		: Promise.resolve({ connected: false, response: null as IInitResponse | null });
@@ -147,7 +144,7 @@ async function loadGameScene(sceneId: string): Promise<void> {
 
 	const gameScene = createGameScene(entry, serverInit.response);
 
-	await changeScene(gameScene);
+	await changeScene(gameScene, true);
 
 	adjustSceneUi(entry, isServerConnected); // !! to be implemented
 }
@@ -214,7 +211,6 @@ function connectCheat(scene: Scene, serverConnected: boolean): void {
 
 	if (serverConnected) {
 		scene.on('cheatACoin', onCheatTriggered);
-		return;
 	}
 }
 
@@ -223,15 +219,17 @@ function adjustSceneUi(entry: GameSceneCatalogEntry, serverConnected: boolean): 
 	console.info(`adjustSceneUi: "${entry.title}" loaded, server=${serverConnected}`);
 }
 
-async function changeScene(newScene: Scene): Promise<void> {
+async function changeScene(newScene: Scene, showHud: boolean = false): Promise<void> {
 	if (currentScene) {
 		if (currentScene instanceof MainGameScene) {
 			currentScene.off('leverTriggered');
+			currentScene.off('cheatACoin');
 		}
 
 		const promiseFadeIsOn = fadeEffect(500, true);
 		const promiseSceneInit = newScene.init();
 		await Promise.all([promiseFadeIsOn, promiseSceneInit]);
+		hudLayer.visible = showHud;
 
 		gameLayer.removeChild(currentScene);
 		gameLayer.addChild(newScene);

@@ -22,12 +22,9 @@ const createForestScene = (args?: GameSceneCreateArgs): Scene => {
 	if (hasKeys) {
 		return new MainGameScene(symbolKeys);
 	}
-	/*if (hasMatrix) {
-		// should no be like that
-		let keys = symbolMatrix.at(0);
-		const sortedKeys = [...keys].sort();
-		return new MainGameScene(sortedKeys, symbolMatrix);
-	}*/
+	if (hasMatrix) {
+		// Cannot extract symbol keys from the matrix to sequence the textures correctly.
+	}
 	return new MainGameScene();
 };
 

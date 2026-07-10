@@ -1,5 +1,4 @@
 import { Sprite, Texture, Container, Assets, Spritesheet, AnimatedSprite, Graphics, ParticleContainer } from 'pixi.js';
-import { gsap } from 'gsap';
 import { Scene } from './scene';
 import { AnotherFly } from '../components/particle-fly';
 import { Coin, CoinThrowOptions } from '../components/coin';
@@ -7,7 +6,6 @@ import { Reel, ReelState } from '../components/reel';
 import { Spine } from '@esotericsoftware/spine-pixi-v8';
 import { SoundManager } from '../managers/sound-manager';
 import { SpineDisplay } from '../components/spine-display';
-import { number } from 'zod';
 
 export class MainGameScene extends Scene {
 	private bgSprite!: Sprite;

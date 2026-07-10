@@ -4,7 +4,10 @@ import { BUILD_INFO } from './build-info.generated';
 
 export { BUILD_INFO };
 
-export const formatBuildLabel = (): string => {
+const formatBuildDate = (): string => BUILD_INFO.builtAt.slice(0, 10);
+
+/** Full label for console and BUILD.txt — sha, buildId, dirty mark */
+export const formatBuildLabelFull = (): string => {
 	const dirtyMark = BUILD_INFO.gitDirty ? '*' : '';
 
 	if (BUILD_INFO.mode === 'development') {
@@ -12,11 +15,23 @@ export const formatBuildLabel = (): string => {
 	}
 
 	const head = `v${BUILD_INFO.version} · ${BUILD_INFO.channel} · ${BUILD_INFO.gitSha}${dirtyMark}`;
-	return `${head}\n${BUILD_INFO.buildId}`;
+	return `${head} · ${BUILD_INFO.buildId}`;
+};
+
+/** Short label for HUD — version, channel, build date (no time) */
+export const formatBuildLabel = (): string => {
+	const dirtyMark = BUILD_INFO.gitDirty ? '*' : '';
+	const date = formatBuildDate();
+
+	if (BUILD_INFO.mode === 'development') {
+		return `v${BUILD_INFO.version} dev ${date}${dirtyMark}`;
+	}
+
+	return `v${BUILD_INFO.version} ${BUILD_INFO.channel} ${date}`;
 };
 
 export const logBuildInfo = (): void => {
-	console.info(`[Slot Game] ${formatBuildLabel()} (built ${BUILD_INFO.builtAt})`);
+	console.info(`[Slot Game] ${formatBuildLabelFull()} (built ${BUILD_INFO.builtAt})`);
 };
 
 const VERSION_TEXT_FILL = '#D9B978';

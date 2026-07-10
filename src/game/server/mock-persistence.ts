@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IPlayer, IWallet, PlayerScheme, WalletScheme } from '../slot-game-interface';
+import { IWallet, PlayerScheme, WalletScheme } from '../slot-game-interface';
 import { accountConfig } from './account-config';
 import { ReelMatrix } from './game-definition';
 
