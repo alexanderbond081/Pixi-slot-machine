@@ -146,10 +146,6 @@
 					"src": "assets/spine/owl/export/owl.atlas"
 				},
 				{
-					"alias": "sound-button-brown",
-					"src": "assets/images/sound-button-brown.json"
-				},
-				{
 					"alias": "bg-music-fantasy",
 					"src": "assets/sounds/deuslower-fantasy-medieval-ambient.mp3"
 				},

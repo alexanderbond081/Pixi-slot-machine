@@ -115,7 +115,7 @@ export class Reel extends Container {
 				break;
 
 			case ReelState.STOPPING:
-				this.stopFramesCount++;
+				this.stopFramesCount += deltaTime;
 				this.wayToStop -= this.currentSpeed * deltaTime;
 
 				if (this.currentSpeed > this.minSpeed) {
@@ -129,7 +129,7 @@ export class Reel extends Container {
 					const idealSpeed = this.wayToStop / framesLeft;
 					const targetSpeed = Math.max(this.minSpeed, idealSpeed);
 					const stopSmoothing = 0.15;
-					this.currentSpeed += (targetSpeed - this.currentSpeed) * stopSmoothing;
+					this.currentSpeed += Math.min(0, (targetSpeed - this.currentSpeed) * stopSmoothing);
 
 				} else {
 					this.currentSpeed = this.minSpeed;
