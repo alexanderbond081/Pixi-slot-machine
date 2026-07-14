@@ -20,6 +20,7 @@ import { BalancePresenter, LOSS_REVEAL_DURATION_MS } from './hud/balance-present
 import { GameHUD } from './hud/game-hud';
 import { SoundManager } from './managers/sound-manager';
 import { debug } from './managers/debug';
+import { bindGameDelayTicker } from './global-delay';
 
 Filter.defaultOptions.resolution = 'inherit';
 gsap.registerPlugin(PixiPlugin);
@@ -134,6 +135,7 @@ async function initGame(): Promise<void> {
 		autoDensity: true,
 		resolution: window.devicePixelRatio || 1,
 	});
+	bindGameDelayTicker(app.ticker);
 	document.body.appendChild(app.canvas);
 	applyStageScale();
 
@@ -164,7 +166,7 @@ async function initGame(): Promise<void> {
 	// load main game scene
 	await loadGameScene('main-scene');
 
-	// setup keys and window focus
+	// setup keys and window focus - 
 	//app.canvas.setAttribute('tabindex', '0');
 	//app.canvas.focus();
 
