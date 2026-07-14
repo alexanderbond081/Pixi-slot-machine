@@ -54,19 +54,77 @@ let inUse = false;
 
 let currentBet = DEFAULT_MIN_BET;
 
+const getClientSize = (): { width: number; height: number } => {
+	const visualViewport = window.visualViewport;
+	return {
+		width: visualViewport?.width ?? document.documentElement.clientWidth,
+		height: visualViewport?.height ?? document.documentElement.clientHeight,
+	};
+};
+
+const applyStageScale = (): void => {
+	const dpr = window.devicePixelRatio || 1;
+	const { width: clientWidth, height: clientHeight } = getClientSize();
+
+	app.renderer.resolution = dpr;
+	app.renderer.resize(clientWidth, clientHeight);
+
+	const scale = Math.min(
+		clientWidth / gameWidth,
+		clientHeight / gameHeight,
+	);
+
+	app.stage.scale.set(scale);
+	app.stage.x = (clientWidth - gameWidth * scale) * 0.5;
+	app.stage.y = (clientHeight - gameHeight * scale) * 0.5;
+};
+
+const applyResponsiveLayout = (): void => {
+	// !! to be implemented
+	//app.renderer.resize(gameWidth, gameHeight);
+	//currentScene?.resize(gameWidth, gameHeight);
+	//gameHUD.resize(gameWidth, gameHeight);
+};
+
+const isFullscreen = (): boolean => {
+	return document.fullscreenElement !== null;
+};
+
+const toggleFullscreen = async (): Promise<void> => {
+	try {
+		if (!isFullscreen()) {
+			await document.documentElement.requestFullscreen();
+		} else {
+			await document.exitFullscreen();
+		}
+	} catch (error) {
+		console.warn('toggleFullscreen: not available', error);
+	} finally {
+		applyStageScale();
+	}
+};
+
+const bindViewportListeners = (): void => {
+	const onViewportChange = (): void => {
+		applyStageScale();
+	};
+
+	window.addEventListener('resize', onViewportChange);
+	window.addEventListener('orientationchange', () => {
+		requestAnimationFrame(onViewportChange);
+		setTimeout(onViewportChange, 100);
+		setTimeout(onViewportChange, 300);
+	});
+	window.visualViewport?.addEventListener('resize', onViewportChange);
+	window.visualViewport?.addEventListener('scroll', onViewportChange);
+	document.addEventListener('fullscreenchange', onViewportChange);
+};
+
 async function initGame(): Promise<void> {
 	logBuildInfo();
 
 	SoundManager.init();
-
-	window.addEventListener('resize', () => {
-		const dpr = window.devicePixelRatio || 1;
-		app.renderer.resolution = dpr;
-		// under construction
-		//app.renderer.resize(gameWidth, gameHeight);
-		//currentScene?.resize(gameWidth, gameHeight);
-		debug.log(`resized ${window.devicePixelRatio}`);
-	});
+	bindViewportListeners();
 
 	await app.init({
 		background: '0x222222',
@@ -77,6 +135,7 @@ async function initGame(): Promise<void> {
 		resolution: window.devicePixelRatio || 1,
 	});
 	document.body.appendChild(app.canvas);
+	applyStageScale();
 
 	app.stage.addChild(gameLayer);
 	app.stage.addChild(hudLayer);
@@ -259,6 +318,14 @@ async function initHUD(): Promise<void> {
 	}
 
 	connectBetControls();
+	connectFullscreenControl();
+}
+
+function connectFullscreenControl(): void {
+	gameHUD.off('toggle-fullscreen');
+	gameHUD.on('toggle-fullscreen', () => {
+		void toggleFullscreen();
+	});
 }
 
 function setupBetControls(initResponse: IInitResponse | null): void {
@@ -354,6 +421,13 @@ async function onCheatTriggered(): Promise<void> {
 }
 
 function onKeyDown(event: KeyboardEvent): void {
+	if (event.code === 'KeyF') {
+		event.preventDefault();
+		if (event.repeat) return;
+		void toggleFullscreen();
+		return;
+	}
+
 	if (isPaused || inUse) return;
 	if (event.code === 'Space' || event.code === 'Enter') {
 		event.preventDefault();

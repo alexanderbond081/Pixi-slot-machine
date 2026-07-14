@@ -10,18 +10,21 @@ import { HUD } from './hud';
 
 const PANEL_MARGIN = 8;
 
-const SOUND_BUTTON_LEFT = 42;
-const INFO_BUTTON_LEFT = 106;
+// position
+const FULLSCREEN_BUTTON_LEFT = 34;
+const SOUND_BUTTON_LEFT = 92;
+const INFO_BUTTON_LEFT = 150;
+const INFO_LABEL_LEFT = 210;
 
-const INFO_LABEL_LEFT = 180;
-const INFO_PANEL_HEIGHT = 60;
-const INFO_PANEL_WIDTH = 220;
+const BALANCE_RIGHT = 86;
+const BET_RIGHT = 228;
 
-const BALANCE_RIGHT = 68;
-const BET_RIGHT = 224;
-
+// size
 const HUD_BUTTON_SIZE = 48;
 const BET_BUTTON_SIZE = 38;
+
+const INFO_PANEL_HEIGHT = 60;
+const INFO_PANEL_WIDTH = 220;
 
 const BALANCE_HEIGHT = 60;
 const BALANCE_WIDTH = 130;
@@ -31,10 +34,10 @@ const BET_PANEL_HEIGHT = 56;
 const BET_PANEL_WIDTH = 62;
 const BET_TEXT_TOP = 7;
 
-const DEBUG_PANEL_LEFT = 190;
-const DEBUG_PANEL_TOP = 320;
-const DEBUG_PANEL_WIDTH = 370;
-const DEBUG_PANEL_HEIGHT = 180;
+const DEBUG_PANEL_LEFT = 165;
+const DEBUG_PANEL_TOP = 310;
+const DEBUG_PANEL_WIDTH = 390;
+const DEBUG_PANEL_HEIGHT = 190;
 const DEBUG_FONT_SIZE = 12;
 const DEBUG_TEXT_PADDING = 6;
 
@@ -50,6 +53,7 @@ const clampBet = (value: number, minBet: number, maxBet: number): number => {
 
 export class GameHUD extends HUD {
 	private panelSprite!: Sprite;
+	private fullscreenButton!: UIButton;
 	private soundButton!: UIButton;
 	private infoButton!: UIButton;
 	private infoPanel!: NineSliceSprite;
@@ -75,6 +79,7 @@ export class GameHUD extends HUD {
 
 	public async init(): Promise<void> {
 		await this.addPanel();
+		await this.addFullscreenButton();
 		await this.addSoundButton();
 		await this.addInfoButton();
 		await this.addInfoPanel();
@@ -126,6 +131,7 @@ export class GameHUD extends HUD {
 
 	protected onResize(): void {
 		this.adjustPanel();
+		this.adjustFullscreenButton();
 		this.adjustSoundButton();
 		this.adjustInfoButton();
 		this.adjustInfoPanel();
@@ -140,6 +146,13 @@ export class GameHUD extends HUD {
 		this.panelSprite = new Sprite(texture);
 		this.adjustPanel();
 		this.addChildAt(this.panelSprite, 0);
+	}
+
+	private async addFullscreenButton(): Promise<void> {
+		this.fullscreenButton = await this.createIconButton('button-fullscreen', HUD_BUTTON_SIZE);
+		this.adjustFullscreenButton();
+		this.addChild(this.fullscreenButton);
+		this.bindButtonSignal(this.fullscreenButton, 'toggle-fullscreen');
 	}
 
 	private async addSoundButton(): Promise<void> {
@@ -405,6 +418,11 @@ export class GameHUD extends HUD {
 		this.panelSprite.scale.set(targetWidth / this.panelSprite.texture.width);
 		this.panelSprite.x = PANEL_MARGIN;
 		this.panelSprite.y = Scene.viewportHeight - PANEL_MARGIN - this.panelSprite.height;
+	}
+
+	private adjustFullscreenButton(): void {
+		this.fullscreenButton.x = FULLSCREEN_BUTTON_LEFT + HUD_BUTTON_SIZE / 2;
+		this.fullscreenButton.y = this.panelSprite.y + this.panelSprite.height / 2;
 	}
 
 	private adjustSoundButton(): void {

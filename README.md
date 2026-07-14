@@ -8,13 +8,15 @@ A browser-based slot machine demo built with **Pixi.js v8**, **TypeScript**, **G
 - **Mock game server** — init/spin API with Zod-validated contracts; symbol outcomes, paytable evaluation, and wallet settlement run server-side (no client-side cheat logic on the final design path)
 - **Wallet persistence** — balance stored in `localStorage` with `lastTransactionIndex` for stale snapshot rejection
 - **Balance presenter** — phased HUD updates: debit on spin start, hold server result during reel animation, reveal after all reels stop
-- **HUD** — balance display with animated debit/credit, bet controls (+/−), sound/info buttons, build version label
+- **HUD** — balance display with animated debit/credit, bet controls (+/−), fullscreen / sound / info buttons, build version label
 - **Scene catalog** — entries map scene id → asset bundle → optional `gameId`; factory passes server `symbolIds` (atlas order) and `symbols` (3×3 window) into the scene constructor
 - **Spine animations** — owl character reactions and coin burst particles on win
 - **Layered audio** — separate music, ambience, and SFX buses via `@pixi/sound`; per-reel spin sounds with staggered stop clicks
 - **Scene flow** — preload splash → loading screen with progress bar → main game, with GSAP fade transitions
 - **UI button feedback** — `UIButton` with pluggable decorations (`HighlightDecoration`: hover highlight, press tint, elastic tap)
 - **Input** — pull the lever (click) or press **Space** / **Enter**
+- **Viewport scaling** — fixed 800×600 design scaled via `app.stage` (letterbox, aspect ratio preserved); DPR sync; `resize` / `orientationchange` / `visualViewport` / `fullscreenchange` listeners
+- **Fullscreen** — HUD button or **F** key (`requestFullscreen` where supported; itch.io embed uses the same scaling inside its iframe)
 
 ## Tech Stack
 
@@ -103,7 +105,7 @@ src/
 2. Adjust bet with **+** / **−** (within server `maxBet`).
 3. Click the lever or press **Space** / **Enter** to spin.
 4. Reels stop one by one; a win triggers a coin spray and owl celebration.
-5. Use the sound button (top-left) to toggle audio.
+5. Use the sound button to toggle audio; the leftmost HUD button (or **F**) toggles fullscreen.
 6. Balance persists across page reloads (mock wallet in `localStorage`).
 
 ## Development Notes
@@ -114,6 +116,7 @@ src/
 - **Spin flow:** lever debits balance (`BalancePresenter.onSpinStarted`) → server `fetchSpin` → each reel stops on the payline symbol `result.symbols[reelIndex][1]` → balance reveal after the last reel (`onReelsStopped`).
 - **Reel stop (`src/components/reel.ts`):** `stopSpin()` fixes the remaining path `wayToStop` to the target symbol. During `STOPPING`, speed follows an adaptive curve: `idealSpeed = wayToStop / framesLeft`, smoothed with lerp and **never increased** (deceleration only). Braking budget uses `stopFramesCount += deltaTime` (~40 frames at `dt = 1`). On overshoot, `adjustSymbolsPos` snaps the strip so the stop symbol lands on the payline; `CLICKED` / `FINALADJUST` run a short micro-bounce. `deltaTime` is capped at `2` per frame to limit visible jumps on mobile lag spikes. Hot-path `update()` iterates a cached `values[]` sprite array (no per-frame allocations).
 - **Mobile debugging:** HUD **info** button toggles an on-screen debug log (`managers/debug.ts`). Use the Network URL from `npm start` to test on a device.
+- **Viewport / fullscreen (`index.ts`, `src/index.html`):** renderer fills the window (or itch.io iframe); `applyStageScale()` scales and centers `app.stage` without changing scene/HUD layout coordinates. Per-scene responsive relayout is stubbed in `applyResponsiveLayout()` for a future pass.
 - **API field names** use camelCase (`gameId`, `maxBet`, `symbolIds`) in TypeScript contracts and mock server responses.
 - GSAP `PixiPlugin` is registered in `index.ts` for scene fade effects and UI decorations.
 - `Filter.defaultOptions.resolution = 'inherit'` keeps ColorMatrix filters sharp on high-DPI and zoomed pages.
@@ -189,7 +192,7 @@ Regular WIP commits do **not** require a version bump.
 
 ## Roadmap (planned)
 
-- Responsive layout (`resize` wiring, browser zoom / DPR sync)
+- Per-scene responsive layout (`applyResponsiveLayout` — relayout scenes/HUD to window size instead of stage-only scaling)
 - `IGameSceneCapabilities` — decouple `index.ts` from `MainGameScene` (`instanceof` stubs today)
 - HUD wallet button — wire `show-wallet` signal from `GameHUD`
 - Server error UX — emergency reel stop animation when spin/init fails

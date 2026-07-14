@@ -42,6 +42,15 @@
 					}
 				},
 				{
+					"alias": "button-fullscreen",
+					"src": "assets/images/button-fullscreen.png",
+					"data": {
+						"resolution": 1,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
+					}
+				},
+				{
 					"alias": "button-coins",
 					"src": "assets/images/button-coins.png",
 					"data": {

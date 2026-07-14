@@ -36,7 +36,8 @@ module.exports = (_env, argv) => ({
 	},
 	plugins: [
 		new HtmlWebpackPlugin({
-			title: 'Slot Game', // Automatically generates index.html and injects the script
+			template: 'src/index.html',
+			title: 'Slot Game',
 			favicon: 'src/favicon.ico',
 		}),
 		new CopyPlugin({ // Copies static asset files to the build directory
