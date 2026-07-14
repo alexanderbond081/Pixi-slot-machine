@@ -56,6 +56,8 @@ module.exports = (_env, argv) => ({
 			},
 		],
 		hot: true, // Enables Hot Module Replacement (HMR) on code changes
+		host: '0.0.0.0',
 		port: 3000,
+		allowedHosts: 'all',
 	},
 });

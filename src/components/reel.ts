@@ -1,4 +1,5 @@
 import { Container, Sprite, Texture, Graphics } from 'pixi.js';
+import { debug } from '../managers/debug';
 
 export enum ReelState { STOPPED, STARTING, SPINNING, STOPPING, CLICKED, FINALADJUST };
 
@@ -16,6 +17,8 @@ export class Reel extends Container {
 	private framesToStop: number = 40;
 	private stopFramesCount: number = 0;
 	private stopDecelerationCoeff: number = 30;
+
+	private deltaTimeDebug: number = 0;
 
 	public get state(): ReelState {
 		return this._state;
@@ -62,11 +65,14 @@ export class Reel extends Container {
 		}
 	}
 
+	// update view
 	public update(deltaTime: number): void {
 		if (this.state === ReelState.STOPPED) {
 			return;
 		}
 
+		// deltaTime on mobile could be up to 10, so limit it to avoid skipping animation at the cost of freezing animation
+		deltaTime = Math.min(deltaTime, 2);
 		let reelPosition: number = 0;
 
 		for (const sprite of this.symbols.values()) {
@@ -90,21 +96,13 @@ export class Reel extends Container {
 				}
 		}
 
-		const increaseCurrentSpeed = (acceleration: number): void => {
-			this.currentSpeed += acceleration * deltaTime;
-		};
-
-		const decreaseCurrentSpeed = (acceleration: number): void => {
-			this.currentSpeed -= acceleration * deltaTime;
-		};
-
 		const reelInPosition = (finish: number, gap: number = this.currentSpeed): boolean => {
 			return reelPosition >= finish && reelPosition <= finish + gap * deltaTime;
 		};
 
 		switch (this._state) {
 			case ReelState.STARTING:
-				increaseCurrentSpeed(this.maxSpeed / 5);
+				this.currentSpeed += (this.maxSpeed / 5) * deltaTime;
 				if (this.currentSpeed >= this.maxSpeed) {
 					this.currentSpeed = this.maxSpeed;
 					this._state = ReelState.SPINNING;
@@ -117,18 +115,19 @@ export class Reel extends Container {
 			case ReelState.STOPPING:
 				this.stopFramesCount += deltaTime;
 				this.wayToStop -= this.currentSpeed * deltaTime;
+				this.deltaTimeDebug = Math.max(this.deltaTimeDebug, deltaTime);
 
 				if (this.currentSpeed > this.minSpeed) {
 					// !! in progress
 
 					// linear breaking - stop animation frames (and time) vary from 29 to 55
-					//decreaseCurrentSpeed(this.currentSpeed / this.stopDecelerationCoeff);
+					//this.currentSpeed -= (this.currentSpeed / this.stopDecelerationCoeff) * deltaTime;
 
 					// adaptive breaking - exactly 40 frames animation, but pinning speed can be not perfectly smooth
 					const framesLeft = Math.max(this.framesToStop - this.stopFramesCount, 1);
 					const idealSpeed = this.wayToStop / framesLeft;
 					const targetSpeed = Math.max(this.minSpeed, idealSpeed);
-					const stopSmoothing = 0.15;
+					const stopSmoothing = 0.10;
 					this.currentSpeed += Math.min(0, (targetSpeed - this.currentSpeed) * stopSmoothing);
 
 				} else {
@@ -136,11 +135,15 @@ export class Reel extends Container {
 				}
 
 				if (this.wayToStop <= 0) { //if (reelInPosition(this.stopPosition + this.microBounce)) {
+					//debug.log(`wayToStop:${this.wayToStop.toFixed(1)}, realPos:${reelPosition.toFixed(1)}, stopPos:${this.stopPosition.toFixed(1)}`);
+					const realWay = reelPosition - this.stopPosition - this.microBounce;
+					debug.log(`wayToStop:${this.wayToStop.toFixed(1)}, realWay:${realWay.toFixed(1)}`);
+					debug.log(`deltaTime:${deltaTime.toFixed(1)}, maxDeltaTime:${this.deltaTimeDebug.toFixed(1)}`);
 					// set exact microbounce position
 					this.adjustSymbolsPos(this.stopKey, this.stopPosition + this.microBounce);
 
 					// roll back for final adjustment
-					this.currentSpeed = -this.minSpeed;
+					this.currentSpeed = -this.microBounce / 2;
 					this._state = ReelState.CLICKED;
 				}
 				break;
@@ -149,11 +152,12 @@ export class Reel extends Container {
 				if (reelPosition > (this.stopPosition - this.microBounce)) {
 					// in case of unstable or huge fps roll back little bit further
 				} else {
-					this.currentSpeed = this.microBounce;
+					this.currentSpeed = this.microBounce / 2;
 					this._state = ReelState.FINALADJUST;
 					this.emit('reelClicked');
 					// !! debug
 					//console.log('reel', this.stopKey, 'stopped after', Math.round(this.stopWayPassed), ', frames', this.stopFramesCount);  // !! debug
+					//debug.log(`${deltaTime.toFixed(1)}`);
 				}
 				break;
 
@@ -194,6 +198,9 @@ export class Reel extends Container {
 		// !! for linear breaking - full stop animation frames vary from 29 to 55
 		const speedDelta = Math.max(this.currentSpeed - this.minSpeed, 0.5);
 		this.stopDecelerationCoeff = this.wayToStop / speedDelta;
+
+		//debug
+		this.deltaTimeDebug = 0;
 	}
 
 	private adjustSymbolsPos(key: any, pos: number) {

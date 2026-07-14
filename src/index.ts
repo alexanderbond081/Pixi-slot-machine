@@ -68,7 +68,7 @@ async function initGame(): Promise<void> {
 		background: '0x222222',
 		width: gameWidth,
 		height: gameHeight,
-		antialias: true,
+		antialias: false,
 		autoDensity: true,
 		resolution: window.devicePixelRatio || 1,
 	});

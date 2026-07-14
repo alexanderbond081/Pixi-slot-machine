@@ -1,7 +1,8 @@
-import { Assets, Container, NineSliceSprite, Sprite, Spritesheet, Text, TextStyle } from 'pixi.js';
+import { Assets, Container, DestroyOptions, Graphics, NineSliceSprite, Sprite, Spritesheet, Text, TextStyle } from 'pixi.js';
 import { gsap } from 'gsap';
 import { HighlightDecoration } from '../components/highlight-decoration';
 import { UIButton } from '../components/ui-button';
+import { debug } from '../managers/debug';
 import { SoundManager } from '../managers/sound-manager';
 import { Scene } from '../scenes/scene';
 import { createVersionLabel } from '../version';
@@ -30,6 +31,13 @@ const BET_PANEL_HEIGHT = 56;
 const BET_PANEL_WIDTH = 62;
 const BET_TEXT_TOP = 7;
 
+const DEBUG_PANEL_LEFT = 190;
+const DEBUG_PANEL_TOP = 320;
+const DEBUG_PANEL_WIDTH = 370;
+const DEBUG_PANEL_HEIGHT = 180;
+const DEBUG_FONT_SIZE = 12;
+const DEBUG_TEXT_PADDING = 6;
+
 const BALANCE_FONTSIZE = 24;
 const BALANCE_FONTCOLOR = '#FFB000';
 const BALANCE_FONT_GLOW = '#FF8C00';
@@ -55,6 +63,10 @@ export class GameHUD extends HUD {
 	private balanceBadge!: Container;
 	private balancePanel!: Sprite;
 	private balanceLabel!: Text;
+	private debugPanel!: Container;
+	private debugPanelBg!: Graphics;
+	private debugPanelText!: Text;
+	private isDebugPanelVisible = false;
 	private displayedBalance = 0;
 	private readonly balanceTicker = { value: 0 };
 	private minBet = DEFAULT_MIN_BET;
@@ -69,6 +81,13 @@ export class GameHUD extends HUD {
 		await this.addBetControls();
 		await this.addBalanceBadge();
 		await this.addCoinsButton();
+		this.addDebugPanel();
+		debug.on('logUpdated', this.refreshDebugPanel, this);
+	}
+
+	public override destroy(options?: DestroyOptions): void {
+		debug.off('logUpdated', this.refreshDebugPanel, this);
+		super.destroy(options);
 	}
 
 	public update(deltaTime: number): void {
@@ -110,6 +129,7 @@ export class GameHUD extends HUD {
 		this.adjustSoundButton();
 		this.adjustInfoButton();
 		this.adjustInfoPanel();
+		this.adjustDebugPanel();
 		this.adjustBetControls();
 		this.adjustBalanceBadge();
 		this.adjustCoinsButton();
@@ -161,7 +181,7 @@ export class GameHUD extends HUD {
 		this.infoButton = await this.createIconButton('button-info', HUD_BUTTON_SIZE);
 		this.adjustInfoButton();
 		this.addChild(this.infoButton);
-		this.bindButtonSignal(this.infoButton, 'show-info');
+		this.bindInfoButton();
 	}
 
 	private async addInfoPanel(): Promise<void> {
@@ -298,6 +318,69 @@ export class GameHUD extends HUD {
 				isClickBlocked = false;
 			});
 		});
+	}
+
+	private addDebugPanel(): void {
+		this.debugPanel = new Container();
+		this.debugPanelBg = new Graphics();
+		this.debugPanelText = new Text({
+			text: '',
+			style: new TextStyle({
+				fontFamily: 'monospace',
+				fontSize: DEBUG_FONT_SIZE,
+				fill: '#ffffff',
+				wordWrap: true,
+			}),
+		});
+		this.debugPanel.addChild(this.debugPanelBg);
+		this.debugPanel.addChild(this.debugPanelText);
+		this.debugPanel.visible = false;
+		this.addChild(this.debugPanel);
+		this.adjustDebugPanel();
+		this.refreshDebugPanel();
+	}
+
+	private bindInfoButton(): void {
+		let isClickBlocked = false;
+
+		this.infoButton.on('pointertap', () => {
+			if (isClickBlocked) {
+				return;
+			}
+
+			SoundManager.playSound('button-pressed');
+			this.isDebugPanelVisible = !this.isDebugPanelVisible;
+			this.debugPanel.visible = this.isDebugPanelVisible;
+			isClickBlocked = true;
+			gsap.delayedCall(0.15, () => {
+				isClickBlocked = false;
+			});
+		});
+	}
+
+	private refreshDebugPanel(): void {
+		if (!this.debugPanelText) {
+			return;
+		}
+
+		this.debugPanelText.text = debug.read().join('\n');
+	}
+
+	private adjustDebugPanel(): void {
+		if (!this.debugPanel || !this.panelSprite) {
+			return;
+		}
+
+		const width = DEBUG_PANEL_WIDTH; //Scene.viewportWidth * (2 / 3);
+		const height = DEBUG_PANEL_HEIGHT; //Math.max(this.panelSprite.y - DEBUG_PANEL_MARGIN * 2, 80);
+		this.debugPanelBg.clear()
+			.rect(0, 0, width, height)
+			.fill({ color: 0x555555, alpha: 0.72 });
+		this.debugPanel.x = DEBUG_PANEL_LEFT;
+		this.debugPanel.y = DEBUG_PANEL_TOP;
+		this.debugPanelText.x = DEBUG_TEXT_PADDING;
+		this.debugPanelText.y = DEBUG_TEXT_PADDING;
+		this.debugPanelText.style.wordWrapWidth = width - DEBUG_TEXT_PADDING * 2;
 	}
 
 	private bindButtonSignal(button: UIButton, eventName: string): void {

@@ -225,7 +225,7 @@ export class MainGameScene extends Scene {
 
 		let posX: number = 140;
 		let speed: number = 20;
-		const minSpeed: number = 8;
+		const minSpeed: number = 5;
 
 		for (let symbols of this.symbolMatrix) {
 			const reorderedMap = new Map<any, Texture>();
