@@ -4,7 +4,7 @@ A browser-based slot machine demo built with **Pixi.js v8**, **TypeScript**, **G
 
 ## Features
 
-- **Three independent reels** with acceleration, adaptive braking (~40 frames per stop), and a micro-bounce click animation
+- **Three independent reels** — per-reel `maxSpeed`, acceleration, adaptive braking (~40 normalized frames to the payline), micro-bounce settle (CLICKED → FINALADJUST), and exact symbol alignment via `adjustSymbolsPos`
 - **Mock game server** — init/spin API with Zod-validated contracts; symbol outcomes, paytable evaluation, and wallet settlement run server-side (no client-side cheat logic on the final design path)
 - **Wallet persistence** — balance stored in `localStorage` with `lastTransactionIndex` for stale snapshot rejection
 - **Balance presenter** — phased HUD updates: debit on spin start, hold server result during reel animation, reveal after all reels stop
@@ -44,7 +44,7 @@ npm start
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-Webpack dev server runs with hot reload on port **3000**.
+Webpack dev server runs with hot reload on port **3000** (`host: 0.0.0.0`). After `npm start`, the terminal prints a **Network** URL (e.g. `http://192.168.x.x:3000/`) for testing on a phone over the same Wi‑Fi.
 
 ### Production Build
 
@@ -74,7 +74,7 @@ src/
 ├── version.ts                      # Build label formatting for HUD and console
 ├── assets/                         # Images, sounds, Spine data, asset manifest
 ├── components/
-│   ├── reel.ts, coin.ts            # Reel physics (adaptive stop) and coin particles
+│   ├── reel.ts, coin.ts            # Reel stop physics and coin particles
 │   ├── ui-button.ts                # Interactive UI button (Decoratable)
 │   ├── highlight-decoration.ts     # Hover / press / tap GSAP effects
 │   └── spine-display.ts            # Spine animation wrapper
@@ -91,6 +91,7 @@ src/
 │   ├── game-hud.ts                 # Balance, bet, sound, version panel
 │   └── balance-presenter.ts        # Wallet display logic (debit / reveal / credit)
 ├── managers/
+│   ├── debug.ts                    # Dev-only log buffer (HUD debug panel)
 │   ├── scenes-catalog.ts           # Scene entries and factories
 │   └── sound-manager.ts            # Audio buses and playback
 └── scenes/                         # Preload, Loading, MainGame scenes
@@ -111,6 +112,8 @@ src/
 - Webpack aliases `pixi.js` to a single ESM entry point so Spine and the app share one Pixi instance.
 - **Scene creation:** `loadGameScene` fetches server init, then `createGameScene` passes `symbolKeys: initResponse.symbolIds` and `symbolMatrix: initResponse.symbols` to the catalog factory. The scene builds reel texture maps and the initial window in `addReels()`.
 - **Spin flow:** lever debits balance (`BalancePresenter.onSpinStarted`) → server `fetchSpin` → each reel stops on the payline symbol `result.symbols[reelIndex][1]` → balance reveal after the last reel (`onReelsStopped`).
+- **Reel stop (`src/components/reel.ts`):** `stopSpin()` fixes the remaining path `wayToStop` to the target symbol. During `STOPPING`, speed follows an adaptive curve: `idealSpeed = wayToStop / framesLeft`, smoothed with lerp and **never increased** (deceleration only). Braking budget uses `stopFramesCount += deltaTime` (~40 frames at `dt = 1`). On overshoot, `adjustSymbolsPos` snaps the strip so the stop symbol lands on the payline; `CLICKED` / `FINALADJUST` run a short micro-bounce. `deltaTime` is capped at `2` per frame to limit visible jumps on mobile lag spikes. Hot-path `update()` iterates a cached `values[]` sprite array (no per-frame allocations).
+- **Mobile debugging:** HUD **info** button toggles an on-screen debug log (`managers/debug.ts`). Use the Network URL from `npm start` to test on a device.
 - **API field names** use camelCase (`gameId`, `maxBet`, `symbolIds`) in TypeScript contracts and mock server responses.
 - GSAP `PixiPlugin` is registered in `index.ts` for scene fade effects and UI decorations.
 - `Filter.defaultOptions.resolution = 'inherit'` keeps ColorMatrix filters sharp on high-DPI and zoomed pages.
@@ -186,10 +189,9 @@ Regular WIP commits do **not** require a version bump.
 
 ## Roadmap (planned)
 
-- Reel stop polish — smoother adaptive braking, optimize `adjustSymbolsPos`
 - Responsive layout (`resize` wiring, browser zoom / DPR sync)
 - `IGameSceneCapabilities` — decouple `index.ts` from `MainGameScene` (`instanceof` stubs today)
-- HUD info / wallet buttons — wire `show-info` and `show-wallet` signals from `GameHUD`
+- HUD wallet button — wire `show-wallet` signal from `GameHUD`
 - Server error UX — emergency reel stop animation when spin/init fails
 - Additional catalog entries (1×3 thimbles, other reel layouts)
 - Real backend integration (replace mock server / pay client)

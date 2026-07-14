@@ -18,6 +18,8 @@ import { logBuildInfo } from './version';
 import './global-delay';
 import { BalancePresenter, LOSS_REVEAL_DURATION_MS } from './hud/balance-presenter';
 import { GameHUD } from './hud/game-hud';
+import { SoundManager } from './managers/sound-manager';
+import { debug } from './managers/debug';
 
 Filter.defaultOptions.resolution = 'inherit';
 gsap.registerPlugin(PixiPlugin);
@@ -55,13 +57,15 @@ let currentBet = DEFAULT_MIN_BET;
 async function initGame(): Promise<void> {
 	logBuildInfo();
 
+	SoundManager.init();
+
 	window.addEventListener('resize', () => {
 		const dpr = window.devicePixelRatio || 1;
 		app.renderer.resolution = dpr;
 		// under construction
 		//app.renderer.resize(gameWidth, gameHeight);
 		//currentScene?.resize(gameWidth, gameHeight);
-		//console.log('resized', window.devicePixelRatio);
+		debug.log(`resized ${window.devicePixelRatio}`);
 	});
 
 	await app.init({

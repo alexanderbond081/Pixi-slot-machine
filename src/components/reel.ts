@@ -95,10 +95,6 @@ export class Reel extends Container {
 				}
 		}
 
-		const reelInPosition = (finish: number, gap: number = this.currentSpeed): boolean => {
-			return reelPosition >= finish && reelPosition <= finish + gap * deltaTime;
-		};
-
 		switch (this._state) {
 			case ReelState.STARTING:
 				this.currentSpeed += (this.maxSpeed / 5) * deltaTime;
@@ -133,7 +129,6 @@ export class Reel extends Container {
 				if (this.wayToStop <= 0) {
 					// set exact microbounce position
 					this.adjustSymbolsPos(this.stopSymbol!, this.stopPosition + this.microBounce);
-
 					// roll back for final adjustment
 					this.currentSpeed = -this.microBounce / 2;
 					this._state = ReelState.CLICKED;
@@ -142,7 +137,7 @@ export class Reel extends Container {
 
 			case ReelState.CLICKED:
 				if (reelPosition > (this.stopPosition - this.microBounce)) {
-					// in case of unstable or huge fps roll back little bit further
+					// keep rolling back
 				} else {
 					this.currentSpeed = this.microBounce / 2;
 					this._state = ReelState.FINALADJUST;
@@ -151,7 +146,7 @@ export class Reel extends Container {
 				break;
 
 			case ReelState.FINALADJUST:
-				if (reelInPosition(this.stopPosition)) {
+				if (reelPosition >= this.stopPosition) {
 					this.currentSpeed = 0;
 					// set perfect stop position
 					this.adjustSymbolsPos(this.stopSymbol!, this.stopPosition);

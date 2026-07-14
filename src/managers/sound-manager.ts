@@ -60,6 +60,10 @@ export class SoundManager {
 		this.sfxBus.gain.value = volume;
 	}
 
+	public static init(): void {
+		sound.disableAutoPause = true;
+	}
+
 	public static playMusic(alias: string): void {
 		if (!sound.exists(alias)) {
 			console.warn(`Sound ${alias} doesn't exist`);
