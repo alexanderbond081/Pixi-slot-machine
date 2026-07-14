@@ -1,8 +1,9 @@
-import { Assets, Container, DestroyOptions, Graphics, NineSliceSprite, Sprite, Spritesheet, Text, TextStyle } from 'pixi.js';
+import { Assets, Container, DestroyOptions, NineSliceSprite, Sprite, Spritesheet, Text, TextStyle } from 'pixi.js';
 import { gsap } from 'gsap';
+import { bindDebouncedTap } from '../components/debounced-tap';
 import { HighlightDecoration } from '../components/highlight-decoration';
 import { UIButton } from '../components/ui-button';
-import { debug } from '../managers/debug';
+import { DebugHudPanel } from '../debug/debug-hud-panel';
 import { SoundManager } from '../managers/sound-manager';
 import { Scene } from '../scenes/scene';
 import { createVersionLabel } from '../version';
@@ -33,13 +34,6 @@ const BALANCE_TEXT_TOP = 9;
 const BET_PANEL_HEIGHT = 56;
 const BET_PANEL_WIDTH = 62;
 const BET_TEXT_TOP = 7;
-
-const DEBUG_PANEL_LEFT = 165;
-const DEBUG_PANEL_TOP = 310;
-const DEBUG_PANEL_WIDTH = 390;
-const DEBUG_PANEL_HEIGHT = 190;
-const DEBUG_FONT_SIZE = 12;
-const DEBUG_TEXT_PADDING = 6;
 
 const INFO_WINDOW_WIDTH = 560;
 const INFO_WINDOW_HEIGHT = 420;
@@ -86,12 +80,9 @@ export class GameHUD extends HUD {
 	private balanceWindow!: Container;
 	private balanceWindowPanel!: NineSliceSprite;
 	private balanceWindowText!: Text;
-	private debugPanel!: Container;
-	private debugPanelBg!: Graphics;
-	private debugPanelText!: Text;
+	private debugPanel!: DebugHudPanel;
 	private isInfoWindowVisible = false;
 	private isBalanceWindowVisible = false;
-	private isDebugPanelVisible = false;
 	private displayedBalance = 0;
 	private readonly balanceTicker = { value: 0 };
 	private minBet = DEFAULT_MIN_BET;
@@ -109,12 +100,11 @@ export class GameHUD extends HUD {
 		await this.addCoinsButton();
 		await this.addInfoWindow();
 		await this.addBalanceWindow();
-		this.addDebugPanel();
-		debug.on('logUpdated', this.refreshDebugPanel, this);
+		this.debugPanel = new DebugHudPanel();
+		this.addChild(this.debugPanel);
 	}
 
 	public override destroy(options?: DestroyOptions): void {
-		debug.off('logUpdated', this.refreshDebugPanel, this);
 		super.destroy(options);
 	}
 
@@ -159,7 +149,7 @@ export class GameHUD extends HUD {
 		this.adjustInfoButton();
 		this.adjustInfoPanel();
 		this.adjustInfoWindow();
-		this.adjustDebugPanel();
+		this.debugPanel.adjustLayout();
 		this.adjustBetControls();
 		this.adjustBalanceBadge();
 		this.adjustCoinsButton();
@@ -193,13 +183,7 @@ export class GameHUD extends HUD {
 		this.adjustSoundButton();
 		this.addChild(this.soundButton);
 
-		let isClickBlocked = false;
-
-		this.soundButton.on('pointertap', () => {
-			if (isClickBlocked) {
-				return;
-			}
-
+		bindDebouncedTap(this.soundButton, () => {
 			SoundManager.playSound('button-pressed');
 
 			if (SoundManager.toggleGlobal()) {
@@ -207,11 +191,6 @@ export class GameHUD extends HUD {
 			} else {
 				this.soundButton.setFrame('sound-on');
 			}
-
-			isClickBlocked = true;
-			gsap.delayedCall(0.15, () => {
-				isClickBlocked = false;
-			});
 		});
 	}
 
@@ -409,120 +388,34 @@ export class GameHUD extends HUD {
 	}
 
 	private bindBetButton(button: UIButton, delta: number): void {
-		let isClickBlocked = false;
-
-		button.on('pointertap', () => {
-			if (isClickBlocked) {
-				return;
-			}
-
+		bindDebouncedTap(button, () => {
 			SoundManager.playSound('button-pressed', 1, { speed: 1.3 + this.bet * 0.06 });
 			this.adjustBet(delta);
-			isClickBlocked = true;
-			gsap.delayedCall(0.1, () => {
-				isClickBlocked = false;
-			});
-		});
+		}, { debounceMs: 0.1 });
 	}
 
 	private bindInfoButton(): void {
-		let isClickBlocked = false;
-
-		this.infoButton.on('pointertap', () => {
-			if (isClickBlocked) {
-				return;
-			}
-
+		bindDebouncedTap(this.infoButton, () => {
 			SoundManager.playSound('button-pressed');
-			// this.isDebugPanelVisible = !this.isDebugPanelVisible;
-			// this.debugPanel.visible = this.isDebugPanelVisible;
+			// this.debugPanel.toggle();
 			this.isInfoWindowVisible = !this.isInfoWindowVisible;
 			this.infoWindow.visible = this.isInfoWindowVisible;
-			isClickBlocked = true;
-			gsap.delayedCall(0.15, () => {
-				isClickBlocked = false;
-			});
 		});
-	}
-
-	private addDebugPanel(): void {
-		this.debugPanel = new Container();
-		this.debugPanelBg = new Graphics();
-		this.debugPanelText = new Text({
-			text: '',
-			style: new TextStyle({
-				fontFamily: 'monospace',
-				fontSize: DEBUG_FONT_SIZE,
-				fill: '#ffffff',
-				wordWrap: true,
-			}),
-		});
-		this.debugPanel.addChild(this.debugPanelBg);
-		this.debugPanel.addChild(this.debugPanelText);
-		this.debugPanel.visible = false;
-		this.addChild(this.debugPanel);
-		this.adjustDebugPanel();
-		this.refreshDebugPanel();
-	}
-
-	private refreshDebugPanel(): void {
-		if (!this.debugPanelText) {
-			return;
-		}
-
-		this.debugPanelText.text = debug.read().join('\n');
-	}
-
-	private adjustDebugPanel(): void {
-		if (!this.debugPanel || !this.panelSprite) {
-			return;
-		}
-
-		const width = DEBUG_PANEL_WIDTH;
-		const height = DEBUG_PANEL_HEIGHT;
-		this.debugPanelBg.clear()
-			.rect(0, 0, width, height)
-			.fill({ color: 0x555555, alpha: 0.72 });
-		this.debugPanel.x = DEBUG_PANEL_LEFT;
-		this.debugPanel.y = DEBUG_PANEL_TOP;
-		this.debugPanelText.x = DEBUG_TEXT_PADDING;
-		this.debugPanelText.y = DEBUG_TEXT_PADDING;
-		this.debugPanelText.style.wordWrapWidth = width - DEBUG_TEXT_PADDING * 2;
 	}
 
 	private bindCoinsButton(): void {
-		let isClickBlocked = false;
-
-		this.coinsButton.on('pointertap', () => {
-			if (isClickBlocked) {
-				return;
-			}
-
+		bindDebouncedTap(this.coinsButton, () => {
 			SoundManager.playSound('button-pressed');
 			// this.emit('show-wallet');
 			this.isBalanceWindowVisible = !this.isBalanceWindowVisible;
 			this.balanceWindow.visible = this.isBalanceWindowVisible;
-			isClickBlocked = true;
-			gsap.delayedCall(0.15, () => {
-				isClickBlocked = false;
-			});
 		});
 	}
 
 	private bindButtonSignal(button: UIButton, eventName: string): void {
-		let isClickBlocked = false;
-
-		button.on('pointertap', () => {
-			if (isClickBlocked) {
-				return;
-			}
-
+		bindDebouncedTap(button, () => {
 			SoundManager.playSound('button-pressed');
 			this.emit(eventName);
-			isClickBlocked = true;
-			gsap.delayedCall(0.15, () => {
-				isClickBlocked = false;
-			});
 		});
 	}
 
