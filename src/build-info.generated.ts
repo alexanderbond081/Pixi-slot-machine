@@ -18,6 +18,6 @@ export const BUILD_INFO: BuildInfo = {
 	"gitDirty": true,
 	"mode": "development",
 	"channel": "local",
-	"buildId": "20260713-115015",
-	"builtAt": "2026-07-13T11:50:15.390Z"
+	"buildId": "20260714-011430",
+	"builtAt": "2026-07-14T01:14:30.470Z"
 };

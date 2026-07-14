@@ -1,11 +1,12 @@
 import { Container, Sprite, Texture, Graphics } from 'pixi.js';
-import { debug } from '../managers/debug';
 
 export enum ReelState { STOPPED, STARTING, SPINNING, STOPPING, CLICKED, FINALADJUST };
 
 export class Reel extends Container {
 	private symbols: Map<any, Sprite> = new Map();
+	private values: Sprite[] = [];
 	private stopKey: any;
+	private stopSymbol: Sprite | null = null;
 	private currentSpeed: number = 0;
 	private _state: ReelState = ReelState.STOPPED;
 
@@ -17,8 +18,6 @@ export class Reel extends Container {
 	private framesToStop: number = 40;
 	private stopFramesCount: number = 0;
 	private stopDecelerationCoeff: number = 30;
-
-	private deltaTimeDebug: number = 0;
 
 	public get state(): ReelState {
 		return this._state;
@@ -48,6 +47,7 @@ export class Reel extends Container {
 			posY += symbolSize;
 			if (posY > visibleHeight) posY -= this.totalHeight;
 			this.symbols.set(key, sprite);
+			this.values.push(sprite);
 			this.addChild(sprite);
 			if (i++ === 1) this.stopKey = key;
 		}
@@ -75,7 +75,7 @@ export class Reel extends Container {
 		deltaTime = Math.min(deltaTime, 2);
 		let reelPosition: number = 0;
 
-		for (const sprite of this.symbols.values()) {
+		for (const sprite of this.values) {
 			sprite.y += this.currentSpeed * deltaTime;
 			if (sprite.y >= this.visibleHeight) {
 				sprite.y -= this.totalHeight;
@@ -86,9 +86,8 @@ export class Reel extends Container {
 			case ReelState.STOPPING:
 			case ReelState.CLICKED:
 			case ReelState.FINALADJUST:
-				const symbol = this.symbols.get(this.stopKey);
-				if (symbol) {
-					reelPosition = symbol.y;
+				if (this.stopSymbol) {
+					reelPosition = this.stopSymbol.y;
 				} else {
 					this._state = ReelState.STOPPED;
 					this.emit('reelStopped');
@@ -115,15 +114,12 @@ export class Reel extends Container {
 			case ReelState.STOPPING:
 				this.stopFramesCount += deltaTime;
 				this.wayToStop -= this.currentSpeed * deltaTime;
-				this.deltaTimeDebug = Math.max(this.deltaTimeDebug, deltaTime);
 
 				if (this.currentSpeed > this.minSpeed) {
-					// !! in progress
-
-					// linear breaking - stop animation frames (and time) vary from 29 to 55
+					// option 1: linear breaking - stop animation frames (and time) vary from 29 to 55
 					//this.currentSpeed -= (this.currentSpeed / this.stopDecelerationCoeff) * deltaTime;
 
-					// adaptive breaking - exactly 40 frames animation, but pinning speed can be not perfectly smooth
+					// option 2: adaptive breaking - exactly 40 frames animation, but pinning speed can be not perfectly smooth
 					const framesLeft = Math.max(this.framesToStop - this.stopFramesCount, 1);
 					const idealSpeed = this.wayToStop / framesLeft;
 					const targetSpeed = Math.max(this.minSpeed, idealSpeed);
@@ -134,13 +130,9 @@ export class Reel extends Container {
 					this.currentSpeed = this.minSpeed;
 				}
 
-				if (this.wayToStop <= 0) { //if (reelInPosition(this.stopPosition + this.microBounce)) {
-					//debug.log(`wayToStop:${this.wayToStop.toFixed(1)}, realPos:${reelPosition.toFixed(1)}, stopPos:${this.stopPosition.toFixed(1)}`);
-					const realWay = reelPosition - this.stopPosition - this.microBounce;
-					debug.log(`wayToStop:${this.wayToStop.toFixed(1)}, realWay:${realWay.toFixed(1)}`);
-					debug.log(`deltaTime:${deltaTime.toFixed(1)}, maxDeltaTime:${this.deltaTimeDebug.toFixed(1)}`);
+				if (this.wayToStop <= 0) {
 					// set exact microbounce position
-					this.adjustSymbolsPos(this.stopKey, this.stopPosition + this.microBounce);
+					this.adjustSymbolsPos(this.stopSymbol!, this.stopPosition + this.microBounce);
 
 					// roll back for final adjustment
 					this.currentSpeed = -this.microBounce / 2;
@@ -155,9 +147,6 @@ export class Reel extends Container {
 					this.currentSpeed = this.microBounce / 2;
 					this._state = ReelState.FINALADJUST;
 					this.emit('reelClicked');
-					// !! debug
-					//console.log('reel', this.stopKey, 'stopped after', Math.round(this.stopWayPassed), ', frames', this.stopFramesCount);  // !! debug
-					//debug.log(`${deltaTime.toFixed(1)}`);
 				}
 				break;
 
@@ -165,7 +154,7 @@ export class Reel extends Container {
 				if (reelInPosition(this.stopPosition)) {
 					this.currentSpeed = 0;
 					// set perfect stop position
-					this.adjustSymbolsPos(this.stopKey, this.stopPosition);
+					this.adjustSymbolsPos(this.stopSymbol!, this.stopPosition);
 					this._state = ReelState.STOPPED;
 					this.emit('reelStopped');
 				}
@@ -190,30 +179,30 @@ export class Reel extends Container {
 		}
 
 		this.stopKey = key;
+		this.stopSymbol = symbol;
 		this._state = ReelState.STOPPING;
 		this.wayToStop = this.totalHeight * 2 + this.stopPosition + this.microBounce - symbol.y;
-		this.framesToStop = 40;
-		this.stopFramesCount = 0;
 
-		// !! for linear breaking - full stop animation frames vary from 29 to 55
+		// for options 1: linear breaking - full stop animation frames vary from 29 to 55
 		const speedDelta = Math.max(this.currentSpeed - this.minSpeed, 0.5);
 		this.stopDecelerationCoeff = this.wayToStop / speedDelta;
 
-		//debug
-		this.deltaTimeDebug = 0;
+		// for option 2: adaptive breaking - exactly 40 frames to stop
+		this.framesToStop = 40;
+		this.stopFramesCount = 0;
 	}
 
-	private adjustSymbolsPos(key: any, pos: number) {
-		// !! to be optimized
-		let index = [...this.symbols.keys()].indexOf(key);
-		let posY = pos - index * this.symbolSize;
-		if (posY < 0) posY += this.totalHeight;
-		for (const sprite of this.symbols.values()) {
-			sprite.y = posY;
-			if (sprite.y >= this.visibleHeight) {
-				sprite.y -= this.totalHeight;
-			}
+	private adjustSymbolsPos(symbol: Sprite, pos: number): void {
+		if (!symbol) return;
+		let startIndex = this.values.indexOf(symbol);
+		if (startIndex === -1) return;
+
+		let posY = pos;
+		const count = this.symbols.size;
+		for (let i = 0; i < count; i++) {
+			this.values[(startIndex + i) % count].y = posY;
 			posY += this.symbolSize;
-		}
+			if (posY > this.visibleHeight) posY -= this.totalHeight;
+		};
 	}
 }
