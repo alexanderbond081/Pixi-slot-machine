@@ -41,6 +41,19 @@ const DEBUG_PANEL_HEIGHT = 190;
 const DEBUG_FONT_SIZE = 12;
 const DEBUG_TEXT_PADDING = 6;
 
+const INFO_WINDOW_WIDTH = 560;
+const INFO_WINDOW_HEIGHT = 420;
+const INFO_WINDOW_PADDING = 28;
+const INFO_WINDOW_FONT_SIZE = 18;
+const INFO_WINDOW_PLACEHOLDER = 'Game information will be available here.';
+
+const BALANCE_WINDOW_WIDTH = 320;
+const BALANCE_WINDOW_HEIGHT = 120;
+const BALANCE_WINDOW_PADDING = 20;
+const BALANCE_WINDOW_FONT_SIZE = 18;
+const BALANCE_WINDOW_TEXT = 'Just try to play with the Owl.';
+const WINDOW_MARGIN_ABOVE_PANEL = 12;
+
 const BALANCE_FONTSIZE = 24;
 const BALANCE_FONTCOLOR = '#FFB000';
 const BALANCE_FONT_GLOW = '#FF8C00';
@@ -67,9 +80,17 @@ export class GameHUD extends HUD {
 	private balanceBadge!: Container;
 	private balancePanel!: Sprite;
 	private balanceLabel!: Text;
+	private infoWindow!: Container;
+	private infoWindowPanel!: NineSliceSprite;
+	private infoWindowText!: Text;
+	private balanceWindow!: Container;
+	private balanceWindowPanel!: NineSliceSprite;
+	private balanceWindowText!: Text;
 	private debugPanel!: Container;
 	private debugPanelBg!: Graphics;
 	private debugPanelText!: Text;
+	private isInfoWindowVisible = false;
+	private isBalanceWindowVisible = false;
 	private isDebugPanelVisible = false;
 	private displayedBalance = 0;
 	private readonly balanceTicker = { value: 0 };
@@ -86,6 +107,8 @@ export class GameHUD extends HUD {
 		await this.addBetControls();
 		await this.addBalanceBadge();
 		await this.addCoinsButton();
+		await this.addInfoWindow();
+		await this.addBalanceWindow();
 		this.addDebugPanel();
 		debug.on('logUpdated', this.refreshDebugPanel, this);
 	}
@@ -135,10 +158,12 @@ export class GameHUD extends HUD {
 		this.adjustSoundButton();
 		this.adjustInfoButton();
 		this.adjustInfoPanel();
+		this.adjustInfoWindow();
 		this.adjustDebugPanel();
 		this.adjustBetControls();
 		this.adjustBalanceBadge();
 		this.adjustCoinsButton();
+		this.adjustBalanceWindow();
 	}
 
 	private async addPanel(): Promise<void> {
@@ -220,7 +245,7 @@ export class GameHUD extends HUD {
 		this.coinsButton = await this.createIconButton('button-coins', HUD_BUTTON_SIZE);
 		this.adjustCoinsButton();
 		this.addChild(this.coinsButton);
-		this.bindButtonSignal(this.coinsButton, 'show-wallet');
+		this.bindCoinsButton(); //this.bindButtonSignal(this.coinsButton, 'show-wallet');
 	}
 
 	private async addBetControls(): Promise<void> {
@@ -272,6 +297,73 @@ export class GameHUD extends HUD {
 		this.refreshBalanceLabel();
 		this.adjustBalanceBadge();
 		this.addChild(this.balanceBadge);
+	}
+
+	private async addInfoWindow(): Promise<void> {
+		const popup = await this.createPopupWindow(
+			INFO_WINDOW_WIDTH,
+			INFO_WINDOW_HEIGHT,
+			INFO_WINDOW_FONT_SIZE,
+		);
+		this.infoWindow = popup.container;
+		this.infoWindowPanel = popup.panel;
+		this.infoWindowText = popup.label;
+		this.infoWindowText.text = INFO_WINDOW_PLACEHOLDER;
+		this.adjustInfoWindow();
+		this.addChild(this.infoWindow);
+	}
+
+	private async addBalanceWindow(): Promise<void> {
+		const popup = await this.createPopupWindow(
+			BALANCE_WINDOW_WIDTH,
+			BALANCE_WINDOW_HEIGHT,
+			BALANCE_WINDOW_FONT_SIZE,
+		);
+		this.balanceWindow = popup.container;
+		this.balanceWindowPanel = popup.panel;
+		this.balanceWindowText = popup.label;
+		this.balanceWindowText.text = BALANCE_WINDOW_TEXT;
+		this.adjustBalanceWindow();
+		this.addChild(this.balanceWindow);
+	}
+
+	private async createPopupWindow(
+		width: number,
+		height: number,
+		fontSize: number,
+	): Promise<{ container: Container; panel: NineSliceSprite; label: Text }> {
+		const texture = await Assets.load('panel-window');
+		const container = new Container();
+		const panel = new NineSliceSprite({
+			texture,
+			leftWidth: 32,
+			rightWidth: 32,
+			topHeight: 32,
+			bottomHeight: 32,
+			width,
+			height,
+		});
+		panel.anchor.set(0.5);
+		const label = new Text({
+			text: '',
+			style: this.createWindowTextStyle(fontSize),
+		});
+		label.anchor.set(0.5);
+		container.addChild(panel);
+		container.addChild(label);
+		container.visible = false;
+		return { container, panel, label };
+	}
+
+	private createWindowTextStyle(fontSize: number): TextStyle {
+		return new TextStyle({
+			fontFamily: 'Arial, sans-serif',
+			fontSize,
+			fill: '#E8D5A8',
+			align: 'center',
+			wordWrap: true,
+			lineHeight: fontSize * 1.35,
+		});
 	}
 
 	private async createIconButton(alias: string, size: number): Promise<UIButton> {
@@ -327,6 +419,26 @@ export class GameHUD extends HUD {
 			SoundManager.playSound('button-pressed', 1, { speed: 1.3 + this.bet * 0.06 });
 			this.adjustBet(delta);
 			isClickBlocked = true;
+			gsap.delayedCall(0.1, () => {
+				isClickBlocked = false;
+			});
+		});
+	}
+
+	private bindInfoButton(): void {
+		let isClickBlocked = false;
+
+		this.infoButton.on('pointertap', () => {
+			if (isClickBlocked) {
+				return;
+			}
+
+			SoundManager.playSound('button-pressed');
+			// this.isDebugPanelVisible = !this.isDebugPanelVisible;
+			// this.debugPanel.visible = this.isDebugPanelVisible;
+			this.isInfoWindowVisible = !this.isInfoWindowVisible;
+			this.infoWindow.visible = this.isInfoWindowVisible;
+			isClickBlocked = true;
 			gsap.delayedCall(0.15, () => {
 				isClickBlocked = false;
 			});
@@ -353,24 +465,6 @@ export class GameHUD extends HUD {
 		this.refreshDebugPanel();
 	}
 
-	private bindInfoButton(): void {
-		let isClickBlocked = false;
-
-		this.infoButton.on('pointertap', () => {
-			if (isClickBlocked) {
-				return;
-			}
-
-			SoundManager.playSound('button-pressed');
-			this.isDebugPanelVisible = !this.isDebugPanelVisible;
-			this.debugPanel.visible = this.isDebugPanelVisible;
-			isClickBlocked = true;
-			gsap.delayedCall(0.15, () => {
-				isClickBlocked = false;
-			});
-		});
-	}
-
 	private refreshDebugPanel(): void {
 		if (!this.debugPanelText) {
 			return;
@@ -384,8 +478,8 @@ export class GameHUD extends HUD {
 			return;
 		}
 
-		const width = DEBUG_PANEL_WIDTH; //Scene.viewportWidth * (2 / 3);
-		const height = DEBUG_PANEL_HEIGHT; //Math.max(this.panelSprite.y - DEBUG_PANEL_MARGIN * 2, 80);
+		const width = DEBUG_PANEL_WIDTH;
+		const height = DEBUG_PANEL_HEIGHT;
 		this.debugPanelBg.clear()
 			.rect(0, 0, width, height)
 			.fill({ color: 0x555555, alpha: 0.72 });
@@ -394,6 +488,25 @@ export class GameHUD extends HUD {
 		this.debugPanelText.x = DEBUG_TEXT_PADDING;
 		this.debugPanelText.y = DEBUG_TEXT_PADDING;
 		this.debugPanelText.style.wordWrapWidth = width - DEBUG_TEXT_PADDING * 2;
+	}
+
+	private bindCoinsButton(): void {
+		let isClickBlocked = false;
+
+		this.coinsButton.on('pointertap', () => {
+			if (isClickBlocked) {
+				return;
+			}
+
+			SoundManager.playSound('button-pressed');
+			// this.emit('show-wallet');
+			this.isBalanceWindowVisible = !this.isBalanceWindowVisible;
+			this.balanceWindow.visible = this.isBalanceWindowVisible;
+			isClickBlocked = true;
+			gsap.delayedCall(0.15, () => {
+				isClickBlocked = false;
+			});
+		});
 	}
 
 	private bindButtonSignal(button: UIButton, eventName: string): void {
@@ -440,6 +553,35 @@ export class GameHUD extends HUD {
 		this.infoPanel.y = this.panelSprite.y + this.panelSprite.height / 2;
 		this.versionLabel.x = this.infoPanel.x;
 		this.versionLabel.y = this.infoPanel.y;
+	}
+
+	private adjustInfoWindow(): void {
+		if (!this.infoWindow || !this.panelSprite) {
+			return;
+		}
+
+		const width = Math.min(INFO_WINDOW_WIDTH, Scene.viewportWidth - PANEL_MARGIN * 4);
+		this.infoWindowPanel.width = width;
+		this.infoWindowPanel.height = INFO_WINDOW_HEIGHT;
+		this.infoWindow.x = Scene.viewportWidth / 2;
+		this.infoWindow.y = this.panelSprite.y / 2;
+		this.infoWindowText.x = 0;
+		this.infoWindowText.y = 0;
+		this.infoWindowText.style.wordWrapWidth = width - INFO_WINDOW_PADDING * 2;
+	}
+
+	private adjustBalanceWindow(): void {
+		if (!this.balanceWindow || !this.panelSprite) {
+			return;
+		}
+
+		this.balanceWindowPanel.width = BALANCE_WINDOW_WIDTH;
+		this.balanceWindowPanel.height = BALANCE_WINDOW_HEIGHT;
+		this.balanceWindow.x = this.balanceBadge.x;
+		this.balanceWindow.y = this.panelSprite.y - BALANCE_WINDOW_HEIGHT / 2 - WINDOW_MARGIN_ABOVE_PANEL;
+		this.balanceWindowText.x = 0;
+		this.balanceWindowText.y = 0;
+		this.balanceWindowText.style.wordWrapWidth = BALANCE_WINDOW_WIDTH - BALANCE_WINDOW_PADDING * 2;
 	}
 
 	private adjustBetControls(): void {

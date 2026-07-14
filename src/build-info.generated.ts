@@ -14,10 +14,10 @@ export type BuildInfo = {
 
 export const BUILD_INFO: BuildInfo = {
 	"version": "1.2.0",
-	"gitSha": "64313a3",
+	"gitSha": "6f342cf",
 	"gitDirty": true,
 	"mode": "development",
 	"channel": "local",
-	"buildId": "20260714-195051",
-	"builtAt": "2026-07-14T19:50:51.401Z"
+	"buildId": "20260714-212201",
+	"builtAt": "2026-07-14T21:22:01.044Z"
 };

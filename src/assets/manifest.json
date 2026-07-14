@@ -105,6 +105,15 @@
 					}
 				},
 				{
+					"alias": "panel-window",
+					"src": "assets/images/panel-window.png",
+					"data": {
+						"resolution": 1,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
+					}
+				},
+				{
 					"alias": "ui-panel",
 					"src": "assets/images/ui-panel.png",
 					"data": {

@@ -166,7 +166,7 @@ async function initGame(): Promise<void> {
 	// load main game scene
 	await loadGameScene('main-scene');
 
-	// setup keys and window focus - 
+	// setup keys and window focus - the app works fine without it
 	//app.canvas.setAttribute('tabindex', '0');
 	//app.canvas.focus();
 
