@@ -4,6 +4,8 @@ import { bindDebouncedTap } from '../components/debounced-tap';
 import { HighlightDecoration } from '../components/highlight-decoration';
 import { UIButton } from '../components/ui-button';
 import { DebugHudPanel } from '../debug/debug-hud-panel';
+import { HudModal } from './hud-modal';
+import { InfoWindowContentView } from './info-window-content-view';
 import { SoundManager } from '../managers/sound-manager';
 import { Scene } from '../scenes/scene';
 import { createVersionLabel } from '../version';
@@ -37,9 +39,6 @@ const BET_TEXT_TOP = 7;
 
 const INFO_WINDOW_WIDTH = 560;
 const INFO_WINDOW_HEIGHT = 420;
-const INFO_WINDOW_PADDING = 28;
-const INFO_WINDOW_FONT_SIZE = 18;
-const INFO_WINDOW_PLACEHOLDER = 'Game information will be available here.';
 
 const BALANCE_WINDOW_WIDTH = 320;
 const BALANCE_WINDOW_HEIGHT = 120;
@@ -74,14 +73,12 @@ export class GameHUD extends HUD {
 	private balanceBadge!: Container;
 	private balancePanel!: Sprite;
 	private balanceLabel!: Text;
-	private infoWindow!: Container;
-	private infoWindowPanel!: NineSliceSprite;
-	private infoWindowText!: Text;
+	private modalLayer!: Container;
+	private infoModal!: HudModal;
 	private balanceWindow!: Container;
 	private balanceWindowPanel!: NineSliceSprite;
 	private balanceWindowText!: Text;
 	private debugPanel!: DebugHudPanel;
-	private isInfoWindowVisible = false;
 	private isBalanceWindowVisible = false;
 	private displayedBalance = 0;
 	private readonly balanceTicker = { value: 0 };
@@ -98,10 +95,12 @@ export class GameHUD extends HUD {
 		await this.addBetControls();
 		await this.addBalanceBadge();
 		await this.addCoinsButton();
-		await this.addInfoWindow();
 		await this.addBalanceWindow();
 		this.debugPanel = new DebugHudPanel();
 		this.addChild(this.debugPanel);
+		this.modalLayer = new Container();
+		await this.addInfoModal();
+		this.addChild(this.modalLayer);
 	}
 
 	public override destroy(options?: DestroyOptions): void {
@@ -142,13 +141,26 @@ export class GameHUD extends HUD {
 		this.applyBet(clampBet(bet, this.minBet, this.maxBet), false);
 	}
 
+	public isModalOpen(): boolean {
+		return this.infoModal.isOpen;
+	}
+
+	public closeTopModal(): boolean {
+		if (!this.infoModal.isOpen) {
+			return false;
+		}
+
+		this.infoModal.close();
+		return true;
+	}
+
 	protected onResize(): void {
 		this.adjustPanel();
 		this.adjustFullscreenButton();
 		this.adjustSoundButton();
 		this.adjustInfoButton();
 		this.adjustInfoPanel();
-		this.adjustInfoWindow();
+		this.adjustInfoModal();
 		this.debugPanel.adjustLayout();
 		this.adjustBetControls();
 		this.adjustBalanceBadge();
@@ -278,18 +290,14 @@ export class GameHUD extends HUD {
 		this.addChild(this.balanceBadge);
 	}
 
-	private async addInfoWindow(): Promise<void> {
-		const popup = await this.createPopupWindow(
-			INFO_WINDOW_WIDTH,
-			INFO_WINDOW_HEIGHT,
-			INFO_WINDOW_FONT_SIZE,
-		);
-		this.infoWindow = popup.container;
-		this.infoWindowPanel = popup.panel;
-		this.infoWindowText = popup.label;
-		this.infoWindowText.text = INFO_WINDOW_PLACEHOLDER;
-		this.adjustInfoWindow();
-		this.addChild(this.infoWindow);
+	private async addInfoModal(): Promise<void> {
+		this.infoModal = await HudModal.create({
+			width: INFO_WINDOW_WIDTH,
+			height: INFO_WINDOW_HEIGHT,
+		});
+		this.infoModal.setContent(new InfoWindowContentView());
+		this.modalLayer.addChild(this.infoModal);
+		this.adjustInfoModal();
 	}
 
 	private async addBalanceWindow(): Promise<void> {
@@ -398,8 +406,7 @@ export class GameHUD extends HUD {
 		bindDebouncedTap(this.infoButton, () => {
 			SoundManager.playSound('button-pressed');
 			// this.debugPanel.toggle();
-			this.isInfoWindowVisible = !this.isInfoWindowVisible;
-			this.infoWindow.visible = this.isInfoWindowVisible;
+			this.infoModal.toggle();
 		});
 	}
 
@@ -448,19 +455,18 @@ export class GameHUD extends HUD {
 		this.versionLabel.y = this.infoPanel.y;
 	}
 
-	private adjustInfoWindow(): void {
-		if (!this.infoWindow || !this.panelSprite) {
+	private adjustInfoModal(): void {
+		if (!this.infoModal || !this.panelSprite) {
 			return;
 		}
 
 		const width = Math.min(INFO_WINDOW_WIDTH, Scene.viewportWidth - PANEL_MARGIN * 4);
-		this.infoWindowPanel.width = width;
-		this.infoWindowPanel.height = INFO_WINDOW_HEIGHT;
-		this.infoWindow.x = Scene.viewportWidth / 2;
-		this.infoWindow.y = this.panelSprite.y / 2;
-		this.infoWindowText.x = 0;
-		this.infoWindowText.y = 0;
-		this.infoWindowText.style.wordWrapWidth = width - INFO_WINDOW_PADDING * 2;
+		this.infoModal.adjustLayout(
+			Scene.viewportWidth,
+			Scene.viewportHeight,
+			this.panelSprite.y / 2,
+			width,
+		);
 	}
 
 	private adjustBalanceWindow(): void {

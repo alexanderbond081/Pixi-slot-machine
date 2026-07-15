@@ -8,13 +8,13 @@ A browser-based slot machine demo built with **Pixi.js v8**, **TypeScript**, **G
 - **Mock game server** — init/spin API with Zod-validated contracts; symbol outcomes, paytable evaluation, and wallet settlement run server-side (no client-side cheat logic on the final design path)
 - **Wallet persistence** — balance stored in `localStorage` with `lastTransactionIndex` for stale snapshot rejection
 - **Balance presenter** — phased HUD updates: debit on spin start, hold server result during reel animation, reveal after all reels stop
-- **HUD** — balance display with animated debit/credit, bet controls (+/−), fullscreen / sound / info buttons, build version label
+- **HUD** — balance display with animated debit/credit, bet controls (+/−), fullscreen / sound / info / coins buttons, build version label; modal info window (portfolio text, GitHub & LinkedIn links); balance hint popup on coins button
 - **Scene catalog** — entries map scene id → asset bundle → optional `gameId`; factory passes server `symbolIds` (atlas order) and `symbols` (3×3 window) into the scene constructor
 - **Spine animations** — owl character reactions and coin burst particles on win
 - **Layered audio** — separate music, ambience, and SFX buses via `@pixi/sound`; per-reel spin sounds with staggered stop clicks
 - **Scene flow** — preload splash → loading screen with progress bar → main game, with GSAP fade transitions
 - **UI button feedback** — `UIButton` with pluggable decorations (`HighlightDecoration`: hover highlight, press tint, elastic tap)
-- **Input** — pull the lever (click) or press **Space** / **Enter**
+- **Input** — pull the lever (click) or press **Space** / **Enter**; **Esc** closes the info modal; lever hotkeys are blocked while the modal is open
 - **Viewport scaling** — fixed 800×600 design scaled via `app.stage` (letterbox, aspect ratio preserved); DPR sync; `resize` / `orientationchange` / `visualViewport` / `fullscreenchange` listeners
 - **Fullscreen** — HUD button or **F** key (`requestFullscreen` where supported; itch.io embed uses the same scaling inside its iframe)
 
@@ -78,8 +78,13 @@ src/
 ├── components/
 │   ├── reel.ts, coin.ts            # Reel stop physics and coin particles
 │   ├── ui-button.ts                # Interactive UI button (Decoratable)
+│   ├── debounced-tap.ts            # Shared pointertap debounce helper
 │   ├── highlight-decoration.ts     # Hover / press / tap GSAP effects
 │   └── spine-display.ts            # Spine animation wrapper
+├── content/
+│   └── info-window-content.ts      # Info modal copy and external links
+├── debug/
+│   └── debug-hud-panel.ts          # On-screen debug log panel (dev)
 ├── game/
 │   ├── slot-game-interface.ts      # IInitResponse, ISpinResponse, Zod schemas
 │   ├── slot-machine-client.ts      # Client wrapper around mock server
@@ -90,10 +95,12 @@ src/
 │       ├── game-definition.ts      # GameDefinition interface
 │       └── games/                  # Per-game rules (slot_reels_3x3, slot_bar, …)
 ├── hud/
-│   ├── game-hud.ts                 # Balance, bet, sound, version panel
+│   ├── game-hud.ts                 # HUD layout, bet/balance controls, popups
+│   ├── hud-modal.ts                # Reusable modal (backdrop, 9-slice panel, OK)
+│   ├── info-window-content-view.ts # Info modal text layout and link hit areas
 │   └── balance-presenter.ts        # Wallet display logic (debit / reveal / credit)
 ├── managers/
-│   ├── debug.ts                    # Dev-only log buffer (HUD debug panel)
+│   ├── debug.ts                    # Dev-only log buffer (feeds debug HUD panel)
 │   ├── scenes-catalog.ts           # Scene entries and factories
 │   └── sound-manager.ts            # Audio buses and playback
 └── scenes/                         # Preload, Loading, MainGame scenes
@@ -106,7 +113,9 @@ src/
 3. Click the lever or press **Space** / **Enter** to spin.
 4. Reels stop one by one; a win triggers a coin spray and owl celebration.
 5. Use the sound button to toggle audio; the leftmost HUD button (or **F**) toggles fullscreen.
-6. Balance persists across page reloads (mock wallet in `localStorage`).
+6. **Info** button — opens a modal about the demo (tech stack, GitHub & LinkedIn links); click outside, **OK**, or **Esc** to close.
+7. **Coins** button — toggles a short balance hint popup above the HUD.
+8. Balance persists across page reloads (mock wallet in `localStorage`).
 
 ## Development Notes
 
@@ -115,7 +124,8 @@ src/
 - **Scene creation:** `loadGameScene` fetches server init, then `createGameScene` passes `symbolKeys: initResponse.symbolIds` and `symbolMatrix: initResponse.symbols` to the catalog factory. The scene builds reel texture maps and the initial window in `addReels()`.
 - **Spin flow:** lever debits balance (`BalancePresenter.onSpinStarted`) → server `fetchSpin` → each reel stops on the payline symbol `result.symbols[reelIndex][1]` → balance reveal after the last reel (`onReelsStopped`).
 - **Reel stop (`src/components/reel.ts`):** `stopSpin()` fixes the remaining path `wayToStop` to the target symbol. During `STOPPING`, speed follows an adaptive curve: `idealSpeed = wayToStop / framesLeft`, smoothed with lerp and **never increased** (deceleration only). Braking budget uses `stopFramesCount += deltaTime` (~40 frames at `dt = 1`). On overshoot, `adjustSymbolsPos` snaps the strip so the stop symbol lands on the payline; `CLICKED` / `FINALADJUST` run a short micro-bounce. `deltaTime` is capped at `2` per frame to limit visible jumps on mobile lag spikes. Hot-path `update()` iterates a cached `values[]` sprite array (no per-frame allocations).
-- **Mobile debugging:** HUD **info** button toggles an on-screen debug log (`managers/debug.ts`). Use the Network URL from `npm start` to test on a device.
+- **HUD modals (`src/hud/`):** the **info** button opens `HudModal` — dimmed backdrop, 9-slice `panel-window`, portfolio copy from `content/info-window-content.ts`, clickable GitHub/LinkedIn links, and an **OK** button (`button-ok` texture). **Esc** and backdrop click also close it; **Space** / **Enter** do not trigger a spin while the modal is open. The **coins** button toggles a lightweight balance hint popup (no modal backdrop). A `DebugHudPanel` lives in `src/debug/` and can be re-wired to the info button during development; `managers/debug.ts` feeds its log buffer.
+- **Mobile testing:** use the Network URL from `npm start` to open the game on a phone over the same Wi‑Fi.
 - **Viewport / fullscreen (`index.ts`, `src/index.html`):** renderer fills the window (or itch.io iframe); `applyStageScale()` scales and centers `app.stage` without changing scene/HUD layout coordinates. Per-scene responsive relayout is stubbed in `applyResponsiveLayout()` for a future pass.
 - **API field names** use camelCase (`gameId`, `maxBet`, `symbolIds`) in TypeScript contracts and mock server responses.
 - GSAP `PixiPlugin` is registered in `index.ts` for scene fade effects and UI decorations.
@@ -182,7 +192,7 @@ Regular WIP commits do **not** require a version bump.
    npm run build:itch
    ```
 4. Verify `dist/BUILD.txt` — version, git hash, and build ID should look correct (no `*` = clean git).
-5. Open `dist/index.html` locally (`npx serve dist`) and smoke-test: spin, balance, reload persistence, version label.
+5. Open `dist/index.html` locally (`npx serve dist`) and smoke-test: spin, balance, reload persistence, version label, info modal links.
 6. Upload the **entire** `dist/` folder to itch.io (HTML project).
 7. Tag the release on GitHub if you bumped the version:
    ```bash

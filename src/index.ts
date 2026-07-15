@@ -423,6 +423,13 @@ async function onCheatTriggered(): Promise<void> {
 }
 
 function onKeyDown(event: KeyboardEvent): void {
+	if (event.code === 'Escape') {
+		if (gameHUD.closeTopModal()) {
+			event.preventDefault();
+			return;
+		}
+	}
+
 	if (event.code === 'KeyF') {
 		event.preventDefault();
 		if (event.repeat) return;
@@ -430,7 +437,8 @@ function onKeyDown(event: KeyboardEvent): void {
 		return;
 	}
 
-	if (isPaused || inUse) return;
+	if (isPaused || inUse || gameHUD.isModalOpen()) return;
+
 	if (event.code === 'Space' || event.code === 'Enter') {
 		event.preventDefault();
 		if (event.repeat) return;

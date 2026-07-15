@@ -78,6 +78,15 @@
 					}
 				},
 				{
+					"alias": "button-ok",
+					"src": "assets/images/button-ok.png",
+					"data": {
+						"resolution": 1,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
+					}
+				},
+				{
 					"alias": "panel-balance",
 					"src": "assets/images/panel-balance.png",
 					"data": {
