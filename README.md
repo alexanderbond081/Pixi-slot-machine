@@ -138,7 +138,7 @@ The game version lives in `package.json` (`version` field). Each `npm start` / `
 
 | Field | Meaning |
 |---|---|
-| `version` | SemVer from `package.json` (e.g. `1.1.0`) |
+| `version` | SemVer from `package.json` (e.g. `1.2.1`) |
 | `gitSha` | Short commit hash — identifies what is on GitHub |
 | `gitDirty` | `*` suffix if there are uncommitted local changes |
 | `mode` | `development` (local) or `production` (build) |
@@ -147,23 +147,23 @@ The game version lives in `package.json` (`version` field). Each `npm start` / `
 
 **Where to look:**
 
-- **Local dev** (`npm start`) — HUD info panel (bottom bar): `v1.1.0 dev 2026-07-10*` (date from build time; `*` = uncommitted changes). Console logs the full line: `v1.1.0 · dev · abc1234* · …`.
-- **GitHub** — check `package.json` version + `git log -1 --oneline`. Tag releases as `v1.1.0` to match the version field.
-- **itch.io build** — run `npm run build:itch`, then open `dist/BUILD.txt` or the in-game label: `v1.1.0 itch 2026-07-10` (sha, buildId, and channel in console / `BUILD.txt`).
+- **Local dev** (`npm start`) — HUD info panel (bottom bar): `v1.2.1 dev 2026-07-15*` (date from build time; `*` = uncommitted changes). Console logs the full line: `v1.2.1 · dev · abc1234* · …`.
+- **GitHub** — check `package.json` version + `git log -1 --oneline`. Tag releases as `v1.2.1` to match the version field.
+- **itch.io build** — run `npm run build:itch`, then open `dist/BUILD.txt` or the in-game label: `v1.2.1 itch 2026-07-15` (sha, buildId, and channel in console / `BUILD.txt`).
 
 ### Before a git commit
 
 1. Make sure the game runs: `npm start`.
 2. Bump version **only** when preparing a release or a public itch.io upload:
    ```bash
-   npm run version:patch   # 1.1.0 → 1.1.1 (bugfix)
-   npm run version:minor   # 1.1.0 → 1.2.0 (new feature)
-   npm run version:major   # 1.1.0 → 2.0.0 (breaking change)
+   npm run version:patch   # 1.2.1 → 1.2.2 (bugfix)
+   npm run version:minor   # 1.2.1 → 1.3.0 (new feature)
+   npm run version:major   # 1.2.1 → 2.0.0 (breaking change)
    ```
 3. Commit code **and** the updated `package.json` / `package-lock.json` together.
 4. For a release, add a git tag after the commit:
    ```bash
-   git tag v1.1.1
+   git tag v1.2.1
    ```
 
 Regular WIP commits do **not** require a version bump.
@@ -177,9 +177,9 @@ Regular WIP commits do **not** require a version bump.
    ```
 3. If this push is a **release**, ensure the version was bumped and the tag exists:
    ```bash
-   git tag v1.1.1        # if not created yet
+   git tag v1.2.1        # if not created yet
    git push origin main
-   git push origin v1.1.1
+   git push origin v1.2.1
    ```
 4. For everyday WIP pushes, step 2 is enough — no version bump needed.
 
@@ -196,8 +196,8 @@ Regular WIP commits do **not** require a version bump.
 6. Upload the **entire** `dist/` folder to itch.io (HTML project).
 7. Tag the release on GitHub if you bumped the version:
    ```bash
-   git tag v1.1.1
-   git push origin v1.1.1
+   git tag v1.2.1
+   git push origin v1.2.1
    ```
 
 ## Roadmap (planned)
