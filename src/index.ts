@@ -19,7 +19,6 @@ import './global-delay';
 import { BalancePresenter, LOSS_REVEAL_DURATION_MS } from './hud/balance-presenter';
 import { GameHUD } from './hud/game-hud';
 import { SoundManager } from './managers/sound-manager';
-import { debug } from './managers/debug';
 import { bindGameDelayTicker } from './global-delay';
 
 Filter.defaultOptions.resolution = 'inherit';
