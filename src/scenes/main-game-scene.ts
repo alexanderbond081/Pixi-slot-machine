@@ -61,7 +61,7 @@ export class MainGameScene extends Scene {
 		this.leverPlayAnimation('pull', 0.3);
 		SoundManager.playSound('lever-sfx');
 		this.owl.playAnimation('down', 1, true);
-		await delay(500);
+		await gameDelay(500);
 	}
 
 	public async stopSpinning(reelSymbols: any[][]): Promise<void> {
@@ -91,7 +91,7 @@ export class MainGameScene extends Scene {
 			const symbol = reelSymbols[i][1] ?? this.symbolKeys[0];
 
 			if (i > 0) {
-				await delay(700);
+				await gameDelay(700);
 			}
 
 			this.reels[i].stopSpin(symbol);
@@ -105,7 +105,7 @@ export class MainGameScene extends Scene {
 	public async playBlocked(): Promise<void> {
 		SoundManager.playSound('lever-blocked', 3);
 		this.leverPlayAnimation('blocked', 0.3);
-		await delay(500);
+		await gameDelay(500);
 		this.owlAddStress(1);
 	}
 
@@ -225,7 +225,7 @@ export class MainGameScene extends Scene {
 
 		let posX: number = 140;
 		let speed: number = 20;
-		const minSpeed: number = 8;
+		const minSpeed: number = 5;
 
 		for (let symbols of this.symbolMatrix) {
 			const reorderedMap = new Map<any, Texture>();
@@ -292,10 +292,10 @@ export class MainGameScene extends Scene {
 		let i = count;
 		for (const coin of this.coins) {
 			coin.throw(this.randomiseCoinThrowTrajectory());
-			await delay(100);
+			await gameDelay(100);
 			if (--i <= 0) break;
 		}
-		await delay(100);
+		await gameDelay(100);
 	}
 
 	private async addLever(): Promise<void> {

@@ -42,6 +42,15 @@
 					}
 				},
 				{
+					"alias": "button-fullscreen",
+					"src": "assets/images/button-fullscreen.png",
+					"data": {
+						"resolution": 1,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
+					}
+				},
+				{
 					"alias": "button-coins",
 					"src": "assets/images/button-coins.png",
 					"data": {
@@ -69,6 +78,15 @@
 					}
 				},
 				{
+					"alias": "button-ok",
+					"src": "assets/images/button-ok.png",
+					"data": {
+						"resolution": 1,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
+					}
+				},
+				{
 					"alias": "panel-balance",
 					"src": "assets/images/panel-balance.png",
 					"data": {
@@ -89,6 +107,15 @@
 				{
 					"alias": "panel-info",
 					"src": "assets/images/panel-info.png",
+					"data": {
+						"resolution": 1,
+						"autoGenerateMipmaps": true,
+						"scaleMode": "linear"
+					}
+				},
+				{
+					"alias": "panel-window",
+					"src": "assets/images/panel-window.png",
 					"data": {
 						"resolution": 1,
 						"autoGenerateMipmaps": true,

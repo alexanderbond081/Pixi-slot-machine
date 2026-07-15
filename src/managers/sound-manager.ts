@@ -31,7 +31,7 @@ export class SoundManager {
 
 	private static musicAlias: string = '';
 	private static ambientAlias: string = '';
-
+	private static _pausedByVisibility: boolean = false;
 
 	public static get musicVolume(): number {
 		return this.musicBus.gain.value;
@@ -58,6 +58,39 @@ export class SoundManager {
 	public static set sfxVolume(volume: number) {
 		this._sfxVolume = volume;
 		this.sfxBus.gain.value = volume;
+	}
+
+	public static init(): void {
+		sound.disableAutoPause = true;
+		document.addEventListener('visibilitychange', this.onVisibilityChange);
+	}
+
+	private static onVisibilityChange = (): void => {
+		if (document.visibilityState === 'hidden') {
+			SoundManager.pauseOnHidden();
+			return;
+		}
+
+		SoundManager.resumeOnVisible();
+	};
+
+	public static pauseOnHidden(): void {
+		if (sound.context.paused) {
+			return;
+		}
+
+		sound.pauseAll();
+		this._pausedByVisibility = true;
+	}
+
+	public static resumeOnVisible(): void {
+		if (!this._pausedByVisibility) {
+			return;
+		}
+
+		sound.context.paused = false;
+		sound.context.refreshPaused();
+		this._pausedByVisibility = false;
 	}
 
 	public static playMusic(alias: string): void {
