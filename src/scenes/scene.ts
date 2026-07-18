@@ -15,7 +15,6 @@ export abstract class Scene extends Container {
 		Scene.viewportWidth = width;
 		Scene.viewportHeight = height;
 
-		// !! to be tested
 		this.onResize();
 	}
 

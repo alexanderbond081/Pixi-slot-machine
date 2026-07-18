@@ -28,34 +28,47 @@ export class Reel extends Container {
 		private visibleHeight: number,
 		private maxSpeed: number,
 		private minSpeed: number,
-		symbols: Map<any, Texture>
+		symbolsMap: Map<any, Texture>
 	) {
 		super();
 
-		if (symbols.size < 3) throw new Error('Reel symbols count can not be < 3');
-
-		let i = 0;
-		this.totalHeight = symbols.size * symbolSize;
+		this.totalHeight = symbolsMap.size * symbolSize;
 		this.stopPosition = visibleHeight / 2 - symbolSize / 2; // symbols.size / 4;
 		this.microBounce = minSpeed / 2;
-
-		let posY: number = visibleHeight / 2 - symbolSize * 1.5;
-		for (const [key, texture] of symbols) {
-			const sprite = new Sprite(texture);
-			sprite.setSize(symbolSize, symbolSize);
-			sprite.y = posY;
-			posY += symbolSize;
-			if (posY > visibleHeight) posY -= this.totalHeight;
-			this.symbols.set(key, sprite);
-			this.values.push(sprite);
-			this.addChild(sprite);
-			if (i++ === 1) this.stopKey = key;
-		}
-
 
 		const mask = new Graphics().rect(0, 0, symbolSize, visibleHeight).fill({ color: 0x000000 });
 		this.addChild(mask);
 		this.setMask({ mask });
+
+		this.updateSymbols(symbolsMap);
+	}
+
+	public updateSymbols(symbolsMap: Map<any, Texture>) {
+		if (symbolsMap.size < 3) throw new Error('Reel symbols count can not be < 3');
+
+		this.stopSymbol = null;
+		for (let sprite of this.values) {
+			//this.removeChild(sprite);
+			sprite.destroy();
+		}
+		this.values.length = 0;
+		this.symbols.clear();
+
+		let i = 0;
+		let posY: number = this.visibleHeight / 2 - this.symbolSize * 1.5;
+		for (const [key, texture] of symbolsMap) {
+			const sprite = new Sprite(texture);
+			sprite.setSize(this.symbolSize, this.symbolSize);
+			sprite.y = posY;
+			posY += this.symbolSize;
+			if (posY > this.visibleHeight) posY -= this.totalHeight;
+
+			this.symbols.set(key, sprite);
+			this.values.push(sprite);
+			this.addChild(sprite);
+
+			if (i++ === 1) this.stopKey = key;
+		}
 	}
 
 	public startSpin(): void {

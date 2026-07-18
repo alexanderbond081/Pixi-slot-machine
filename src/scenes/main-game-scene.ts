@@ -18,6 +18,7 @@ export class MainGameScene extends Scene {
 	private flies: AnotherFly[] = [];
 	private fliesContainer!: ParticleContainer;
 
+	private textures!: Texture[];
 	private reels: Reel[] = [];
 	private coins: Coin[] = [];
 
@@ -29,18 +30,21 @@ export class MainGameScene extends Scene {
 		private symbolMatrix: any[][] | null = null,
 	) {
 		super();
-		//this.symbolKeys = [...symbolKeys];
 	}
 
 	// public initializers
 
 	public async init(): Promise<void> {
 		//console.log("MainGameScene: initialization");
+
+		const symbolsSheet = await Assets.load<Spritesheet>('symbols');
+		this.textures = Object.values(symbolsSheet.textures);
+
 		await this.addBackground();
 		await this.addLogo();
 		await this.addSpineAnimation();
 		await this.addFlies();
-		await this.addReels();
+		this.addReels();
 		await this.addLever();
 		await this.addFrame();
 		await this.addLeverButton();
@@ -48,6 +52,15 @@ export class MainGameScene extends Scene {
 
 		SoundManager.playMusic('bg-music-fantasy');
 		SoundManager.playAmbience('ambience');
+	}
+
+	public reInitReels(
+		symbolKeys: any[],
+		symbolMatrix: any[][],
+	) {
+		this.symbolKeys = symbolKeys;
+		this.symbolMatrix = symbolMatrix;
+		this.addReels();
 	}
 
 	// public methods
@@ -109,7 +122,6 @@ export class MainGameScene extends Scene {
 		this.owlAddStress(1);
 	}
 
-	/** Emergency stop when spin fails mid-flight — snap reels back, same SFX as a normal stop. */
 	public async emergencyStop(): Promise<void> {
 		for (let i = 0; i < this.reels.length; i++) {
 			this.reels[i].forceStop();
@@ -226,10 +238,7 @@ export class MainGameScene extends Scene {
 		this.fliesContainer.update();
 	}
 
-	private async addReels(): Promise<void> {
-		const symbolsSheet = await Assets.load<Spritesheet>('symbols');
-		const textures: Texture[] = Object.values(symbolsSheet.textures);
-
+	private addReels(): void {
 		if (!this.symbolMatrix) {
 			const defaultOrder = [[0, 1, 2], [1, 0, 2], [2, 1, 0]];
 			this.symbolMatrix = Array.from(defaultOrder, row =>
@@ -240,21 +249,27 @@ export class MainGameScene extends Scene {
 		let posX: number = 140;
 		let speed: number = 20;
 		const minSpeed: number = 5;
+		let reelIndex: number = 0;
 
 		for (let symbols of this.symbolMatrix) {
 			const reorderedMap = new Map<any, Texture>();
 			for (let key of symbols) {
 				let i = this.symbolKeys.indexOf(key);
-				reorderedMap.set(key, textures[i]);
+				reorderedMap.set(key, this.textures[i]);
 			};
 
-			let reel = new Reel(90, 150, speed, minSpeed, reorderedMap);
-			speed += 3;
-			reel.x = posX;
-			reel.y = 77;
-			posX += 95;
-			this.reels.push(reel);
-			this.theMachine.addChild(reel);
+			if (reelIndex >= this.reels.length) {
+				let reel = new Reel(90, 150, speed, minSpeed, reorderedMap);
+				speed += 3;
+				reel.x = posX;
+				reel.y = 77;
+				posX += 95;
+				this.reels.push(reel);
+				this.theMachine.addChild(reel);
+			} else {
+				this.reels[reelIndex].updateSymbols(reorderedMap);
+			}
+			reelIndex++;
 		};
 	}
 

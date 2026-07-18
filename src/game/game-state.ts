@@ -2,7 +2,7 @@ export type GamePhase = 'IDLE' | 'SPINNING' | 'SETTLING' | 'ERROR';
 
 const ALLOWED_TRANSITIONS: Record<GamePhase, readonly GamePhase[]> = {
 	IDLE: ['SPINNING', 'ERROR'],
-	SPINNING: ['SETTLING', 'IDLE', 'ERROR'],
+	SPINNING: ['SETTLING', 'ERROR'],
 	SETTLING: ['IDLE', 'ERROR'],
 	ERROR: ['IDLE'],
 };

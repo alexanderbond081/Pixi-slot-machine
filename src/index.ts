@@ -225,12 +225,43 @@ async function loadGameScene(sceneId: string): Promise<void> {
 
 	await changeScene(gameScene, true);
 
-	adjustSceneUi(entry, isServerConnected); // !! to be implemented
+	if (!isServerConnected && entry.gameId) {
+		await recoverInitConnection(entry, gameScene, serverInit.response?.error);
+	}
+}
 
-	if (!serverInit.connected) {
-		const message = serverInit.response?.error
-			?? 'Failed to connect to the game server. Spinning is unavailable.';
-		await gameHUD.showError(message);
+async function recoverInitConnection(
+	entry: GameSceneCatalogEntry,
+	gameScene: Scene,
+	initialError?: string,
+): Promise<void> {
+	const gameId = entry.gameId;
+	if (!gameId) {
+		return;
+	}
+
+	const MAX_RETRY_HINT_ATTEMPT = 3;
+	let attempt = 0;
+	let message = initialError
+		?? 'Failed to connect to the game server. Spinning is unavailable.';
+
+	while (!isServerConnected) {
+		attempt += 1;
+		const footer = attempt >= MAX_RETRY_HINT_ATTEMPT
+			? 'Try refreshing the page or try again later.'
+			: 'Press OK to retry.';
+		await gameHUD.showError(`${message}\n\n${footer}`);
+
+		const serverInit = await connectToGameServer(gameId);
+		if (!serverInit.connected || !serverInit.response) {
+			message = serverInit.response?.error
+				?? 'Failed to connect to the game server. Spinning is unavailable.';
+			continue;
+		}
+		isServerConnected = true;
+		balancePresenter.applySnapshot(serverInit.response.wallet, { instant: true });
+		setupBetControls(serverInit.response);
+		reInitScene(entry, gameScene, serverInit.response);
 	}
 }
 
@@ -266,16 +297,28 @@ function createGameScene(entry: GameSceneCatalogEntry, initResponse: IInitRespon
 		: undefined;
 
 	const gameScene = entry.createScene(sceneArgs);
-
-	if (entry.gameId && initResponse?.error === undefined) {
-		connectLever(gameScene, isServerConnected);
-		connectCheat(gameScene, isServerConnected);
-	}
-
+	connectLever(gameScene, isServerConnected);
+	connectCheat(gameScene, isServerConnected);
 	return gameScene;
 }
 
-/** STUB: replace with IGameSceneCapabilities interface (hasLever / bindLever / setReelStops) */
+function reInitScene(entry: GameSceneCatalogEntry, gameScene: Scene, initResponse: IInitResponse | null): void {
+	if (!gameScene) {
+		return;
+	}
+
+	const sceneArgs = initResponse !== null && initResponse.error === undefined
+		? {
+			symbolKeys: initResponse.symbolIds,
+			symbolMatrix: initResponse.symbols,
+		}
+		: undefined;
+
+	entry.reinitScene(gameScene, sceneArgs);
+	connectLever(gameScene, isServerConnected);
+	connectCheat(gameScene, isServerConnected);
+}
+
 function connectLever(scene: Scene, serverConnected: boolean): void {
 	if (!(scene instanceof MainGameScene)) {
 		return;
@@ -293,7 +336,6 @@ function connectLever(scene: Scene, serverConnected: boolean): void {
 	});
 }
 
-/** STUB: replace with IGameSceneCapabilities interface (hasLever / bindLever / setReelStops) */
 function connectCheat(scene: Scene, serverConnected: boolean): void {
 	if (!(scene instanceof MainGameScene)) {
 		return;
@@ -304,11 +346,6 @@ function connectCheat(scene: Scene, serverConnected: boolean): void {
 	if (serverConnected) {
 		scene.on('cheatACoin', onCheatTriggered);
 	}
-}
-
-/** STUB: drive hudLayer widgets (title, balance, scene-specific controls) */
-function adjustSceneUi(entry: GameSceneCatalogEntry, serverConnected: boolean): void {
-	console.info(`adjustSceneUi: "${entry.title}" loaded, server=${serverConnected}`);
 }
 
 async function changeScene(newScene: Scene, showHud: boolean = false): Promise<void> {
@@ -403,18 +440,16 @@ async function onLeverTriggered(): Promise<void> {
 		return;
 	}
 
+	if (balancePresenter.getWallet().balance < currentBet) {
+		await currentScene.playBlocked();
+		return;
+	}
+
 	gameState.transitionTo('SPINNING');
 
-	let spinFlowActive = false;
+	let spinSettled = false;
 
 	try {
-		if (balancePresenter.getWallet().balance < currentBet) {
-			await currentScene.playBlocked();
-			gameState.transitionTo('IDLE');
-			return;
-		}
-
-		spinFlowActive = true;
 		balancePresenter.onSpinStarted(currentBet);
 		await currentScene.startSpinning();
 
@@ -442,22 +477,29 @@ async function onLeverTriggered(): Promise<void> {
 		}
 
 		await delay(100);
+		balancePresenter.onSpinFlowFinished();
+		spinSettled = true;
 		gameState.transitionTo('IDLE');
 
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Spin failed';
 		await handleSpinFailure(currentScene, message);
 	} finally {
-		if (spinFlowActive) {
-			balancePresenter.onSpinFlowFinished();
-		}
-
-		if (gameState.getPhase() !== 'IDLE') {
+		// Success / handleSpinFailure own normal cleanup. Recover only if still mid-spin.
+		if (!spinSettled && (gameState.getPhase() === 'SPINNING' || gameState.getPhase() === 'SETTLING')) {
+			balancePresenter.onSpinFailed();
+			gameState.transitionTo('ERROR');
+			gameState.transitionTo('IDLE');
+		} else if (!spinSettled && gameState.getPhase() === 'ERROR') {
 			gameState.transitionTo('IDLE');
 		}
 	}
 }
 
+/**
+ * ERROR is active while the dialog is open; IDLE resumes only after dismiss.
+ * Wallet rollback happens here once — do not also call onSpinFlowFinished on this path.
+ */
 async function handleSpinFailure(scene: MainGameScene, message: string): Promise<void> {
 	if (gameState.getPhase() !== 'ERROR') {
 		gameState.transitionTo('ERROR');
@@ -469,6 +511,7 @@ async function handleSpinFailure(scene: MainGameScene, message: string): Promise
 
 	balancePresenter.onSpinFailed();
 	await gameHUD.showError(`${message}\n\nPress OK, then pull the lever to retry.`);
+	gameState.transitionTo('IDLE');
 }
 
 async function onCheatTriggered(): Promise<void> {
