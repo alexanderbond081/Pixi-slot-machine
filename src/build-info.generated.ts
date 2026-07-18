@@ -13,11 +13,11 @@ export type BuildInfo = {
 };
 
 export const BUILD_INFO: BuildInfo = {
-	"version": "1.2.1",
-	"gitSha": "9819ced",
+	"version": "1.2.2",
+	"gitSha": "72de6d2",
 	"gitDirty": false,
 	"mode": "production",
 	"channel": "itch",
-	"buildId": "20260718-211820",
-	"builtAt": "2026-07-18T21:18:20.566Z"
+	"buildId": "20260718-212404",
+	"builtAt": "2026-07-18T21:24:04.655Z"
 };
