@@ -64,13 +64,18 @@ export const InitResponseScheme = z.object({
 // spin query objects
 export interface ISpinQuery {
 	bet: number;
+	/** Client-issued round id; server echoes it so stale responses can be rejected. */
+	spinId: string;
 }
 
 export const SpinQueryScheme = z.object({
 	bet: nonNegativeInt,
+	spinId: nonEmptyString,
 });
 
 export interface ISpinResponse {
+	/** Echo of the request spinId (or server-assigned id when request omitted it). */
+	spinId: string;
 	isWin: boolean;
 	winAmount: number;
 	wallet: IWallet;
@@ -79,6 +84,7 @@ export interface ISpinResponse {
 }
 
 export const SpinResponseScheme = z.object({
+	spinId: nonEmptyString,
 	isWin: z.boolean(),
 	winAmount: nonNegativeInt,
 	wallet: WalletScheme,

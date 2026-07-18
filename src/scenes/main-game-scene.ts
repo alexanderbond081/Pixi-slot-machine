@@ -109,6 +109,20 @@ export class MainGameScene extends Scene {
 		this.owlAddStress(1);
 	}
 
+	/** Emergency stop when spin fails mid-flight — snap reels back, same SFX as a normal stop. */
+	public async emergencyStop(): Promise<void> {
+		for (let i = 0; i < this.reels.length; i++) {
+			this.reels[i].forceStop();
+			SoundManager.stopSound('reel-spin');
+			SoundManager.playSound('slot-in', 3);
+			if (i < this.reels.length - 1) {
+				await gameDelay(15);
+			}
+		}
+
+		this.owl.playAnimation('blink', 1, false);
+	}
+
 	public async playWin(winAmount: number): Promise<void> {
 		SoundManager.playSound('win-sfx');
 		this.owl.playAnimation('left', 1, true);

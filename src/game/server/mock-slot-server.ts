@@ -16,6 +16,12 @@ export class MockSlotServer {
 	private reelStates: Record<string, ReelMatrix>;
 
 	private activeGame: GameDefinition | null = null;
+	private spinSequence = 0;
+
+	/** Dev/QA: next init returns an error payload. */
+	private failNextInit = false;
+	/** Dev/QA: next spin returns an error payload (wallet unchanged). */
+	private failNextSpin = false;
 
 	constructor(sessionStore?: MockGameSessionStore, walletLedger?: MockWalletLedger) {
 		this.sessionStore = sessionStore ?? new MockGameSessionStore();
@@ -32,11 +38,26 @@ export class MockSlotServer {
 		return gameRegistry.listGameIds();
 	}
 
+	/** Arm a one-shot init failure for manual QA (`?failInit=1` or client helper). */
+	public armNextInitFailure(): void {
+		this.failNextInit = true;
+	}
+
+	/** Arm a one-shot spin failure for manual QA (press X in-game, or client helper). */
+	public armNextSpinFailure(): void {
+		this.failNextSpin = true;
+	}
+
 	public async handleInit(query: IInitQuery): Promise<IInitResponse> {
 		const parsedQuery = InitQueryScheme.safeParse(query);
 
 		if (!parsedQuery.success) {
 			return this.buildInitError(parsedQuery.error.message);
+		}
+
+		if (this.failNextInit) {
+			this.failNextInit = false;
+			return this.buildInitError('Simulated init failure', parsedQuery.data.gameId);
 		}
 
 		const game = gameRegistry.resolve(parsedQuery.data.gameId);
@@ -65,14 +86,21 @@ export class MockSlotServer {
 	public async handleSpin(query: ISpinQuery): Promise<ISpinResponse> {
 		await this.simulateNetworkDelay();
 
+		const spinId = this.resolveSpinId(query);
+
 		if (!this.activeGame) {
-			return this.buildSpinError('Game not initialized. Call init first.');
+			return this.buildSpinError(spinId, 'Game not initialized. Call init first.');
 		}
 
 		const parsedQuery = SpinQueryScheme.safeParse(query);
 
 		if (!parsedQuery.success) {
-			return this.buildSpinError(parsedQuery.error.message);
+			return this.buildSpinError(spinId, parsedQuery.error.message);
+		}
+
+		if (this.failNextSpin) {
+			this.failNextSpin = false;
+			return this.buildSpinError(spinId, 'Simulated spin failure');
 		}
 
 		const game = this.activeGame;
@@ -81,6 +109,7 @@ export class MockSlotServer {
 
 		if (bet > game.maxBet) {
 			return {
+				spinId,
 				isWin: false,
 				winAmount: 0,
 				wallet: this.readWallet(),
@@ -100,6 +129,7 @@ export class MockSlotServer {
 			this.persistSession();
 
 			return {
+				spinId,
 				isWin: outcome.isWin,
 				winAmount,
 				wallet,
@@ -108,6 +138,7 @@ export class MockSlotServer {
 		} catch (error) {
 			if (error instanceof Error && error.message.startsWith('settleSpin: insufficient balance')) {
 				return {
+					spinId,
 					isWin: false,
 					winAmount: 0,
 					wallet: this.readWallet(),
@@ -118,6 +149,15 @@ export class MockSlotServer {
 
 			throw error;
 		}
+	}
+
+	private resolveSpinId(query: ISpinQuery): string {
+		if (typeof query.spinId === 'string' && query.spinId.length > 0) {
+			return query.spinId;
+		}
+
+		this.spinSequence += 1;
+		return `mock-spin-${this.spinSequence}`;
 	}
 
 	private getReelState(game: GameDefinition): string[][] {
@@ -158,12 +198,13 @@ export class MockSlotServer {
 		};
 	}
 
-	private buildSpinError(message: string): ISpinResponse {
+	private buildSpinError(spinId: string, message: string): ISpinResponse {
 		const symbols = this.activeGame
 			? cloneReelMatrix(this.getReelState(this.activeGame))
 			: [];
 
 		return {
+			spinId,
 			isWin: false,
 			winAmount: 0,
 			wallet: this.readWallet(),

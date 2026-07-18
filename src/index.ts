@@ -12,6 +12,7 @@ import { SlotMachineClient } from './game/slot-machine-client';
 import { PayClient } from './game/pay-client';
 import { MockWalletLedger } from './game/server/mock-persistence';
 import { IInitResponse } from './game/slot-game-interface';
+import { GameState } from './game/game-state';
 import { GameSceneCatalogEntry, gameSceneCatalog } from './managers/scenes-catalog';
 import { logBuildInfo } from './version';
 
@@ -35,6 +36,7 @@ const gameClient = new SlotMachineClient(undefined, walletLedger);
 const payClient = new PayClient(walletLedger);
 const gameHUD = new GameHUD();
 const balancePresenter = new BalancePresenter(gameHUD);
+const gameState = new GameState();
 
 const gameLayer = new Container();
 const hudLayer = new Container();
@@ -49,8 +51,8 @@ let currentScene: Scene | null = null;
 let gameSceneAssets: string = '';
 let isServerConnected = false;
 
+/** Global scene pause (ticker + input) during bootstrap/load — not part of spin FSM. */
 let isPaused = true;
-let inUse = false;
 
 let currentBet = DEFAULT_MIN_BET;
 
@@ -120,8 +122,21 @@ const bindViewportListeners = (): void => {
 	document.addEventListener('fullscreenchange', onViewportChange);
 };
 
+const applyDevFailureFlags = (): void => {
+	const params = new URLSearchParams(window.location.search);
+
+	if (params.get('failInit') === '1') {
+		gameClient.armNextInitFailure();
+	}
+
+	if (params.get('failSpin') === '1') {
+		gameClient.armNextSpinFailure();
+	}
+};
+
 async function initGame(): Promise<void> {
 	logBuildInfo();
+	applyDevFailureFlags();
 
 	SoundManager.init();
 	bindViewportListeners();
@@ -211,6 +226,12 @@ async function loadGameScene(sceneId: string): Promise<void> {
 	await changeScene(gameScene, true);
 
 	adjustSceneUi(entry, isServerConnected); // !! to be implemented
+
+	if (!serverInit.connected) {
+		const message = serverInit.response?.error
+			?? 'Failed to connect to the game server. Spinning is unavailable.';
+		await gameHUD.showError(message);
+	}
 }
 
 async function connectToGameServer(gameId: string): Promise<{ connected: boolean; response: IInitResponse | null }> {
@@ -218,14 +239,21 @@ async function connectToGameServer(gameId: string): Promise<{ connected: boolean
 		const response = await gameClient.fetchInit({ token: MOCK_TOKEN, gameId });
 		const connected = response.error === undefined;
 
-		if (!connected) {
-			console.warn('loadGameScene: server init failed', response.error);
-		}
-
 		return { connected, response };
 	} catch (error) {
-		console.error('loadGameScene: server init error', error);
-		return { connected: false, response: null };
+		const message = error instanceof Error ? error.message : 'Unknown init error';
+		return {
+			connected: false,
+			response: {
+				player: { id: '', userName: '' },
+				wallet: { balance: 0, currency: 'coins', decimals: 0, lastTransactionIndex: 0 },
+				gameId,
+				maxBet: 0,
+				symbolIds: [],
+				symbols: [],
+				error: message,
+			},
+		};
 	}
 }
 
@@ -371,46 +399,76 @@ async function onLeverTriggered(): Promise<void> {
 		return;
 	}
 
-	if (inUse) {
+	if (!gameState.canAcceptSpinInput()) {
 		return;
 	}
+
+	gameState.transitionTo('SPINNING');
 
 	let spinFlowActive = false;
 
 	try {
-		inUse = true;
-
-		if (balancePresenter.getWallet().balance >= currentBet) {
-			spinFlowActive = true;
-			balancePresenter.onSpinStarted(currentBet);
-			await currentScene.startSpinning();
-			const result = await gameClient.fetchSpin({ bet: currentBet });
-			balancePresenter.onSpinResponse(result.wallet);
-			const reelStops = result.symbols;
-			await currentScene.stopSpinning(reelStops);
-
-			if (result.isWin) {
-				balancePresenter.onReelsStopped({
-					durationMs: result.winAmount * 100,
-				});
-				await currentScene.playWin(result.winAmount);
-			} else {
-				balancePresenter.onReelsStopped({ durationMs: LOSS_REVEAL_DURATION_MS });
-				await currentScene.playLost();
-			}
-
-			await delay(100);
-
-		} else {
+		if (balancePresenter.getWallet().balance < currentBet) {
 			await currentScene.playBlocked();
+			gameState.transitionTo('IDLE');
+			return;
 		}
 
+		spinFlowActive = true;
+		balancePresenter.onSpinStarted(currentBet);
+		await currentScene.startSpinning();
+
+		const result = await gameClient.fetchSpin({ bet: currentBet });
+
+		if (result.error) {
+			await handleSpinFailure(currentScene, result.error);
+			return;
+		}
+
+		balancePresenter.onSpinResponse(result.wallet);
+		gameState.transitionTo('SETTLING');
+
+		const reelStops = result.symbols;
+		await currentScene.stopSpinning(reelStops);
+
+		if (result.isWin) {
+			balancePresenter.onReelsStopped({
+				durationMs: result.winAmount * 100,
+			});
+			await currentScene.playWin(result.winAmount);
+		} else {
+			balancePresenter.onReelsStopped({ durationMs: LOSS_REVEAL_DURATION_MS });
+			await currentScene.playLost();
+		}
+
+		await delay(100);
+		gameState.transitionTo('IDLE');
+
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Spin failed';
+		await handleSpinFailure(currentScene, message);
 	} finally {
 		if (spinFlowActive) {
 			balancePresenter.onSpinFlowFinished();
 		}
-		inUse = false;
+
+		if (gameState.getPhase() !== 'IDLE') {
+			gameState.transitionTo('IDLE');
+		}
 	}
+}
+
+async function handleSpinFailure(scene: MainGameScene, message: string): Promise<void> {
+	if (gameState.getPhase() !== 'ERROR') {
+		gameState.transitionTo('ERROR');
+	}
+
+	if (scene.isSpinning()) {
+		await scene.emergencyStop();
+	}
+
+	balancePresenter.onSpinFailed();
+	await gameHUD.showError(`${message}\n\nPress OK, then pull the lever to retry.`);
 }
 
 async function onCheatTriggered(): Promise<void> {
@@ -436,7 +494,14 @@ function onKeyDown(event: KeyboardEvent): void {
 		return;
 	}
 
-	if (isPaused || inUse || gameHUD.isModalOpen()) return;
+	// Dev/QA: arm next spin to fail (also available via ?failSpin=1).
+	if (event.code === 'KeyX' && !event.repeat) {
+		gameClient.armNextSpinFailure();
+		console.info('Mock: next spin will fail');
+		return;
+	}
+
+	if (isPaused || !gameState.canAcceptSpinInput() || gameHUD.isModalOpen()) return;
 
 	if (event.code === 'Space' || event.code === 'Enter') {
 		event.preventDefault();

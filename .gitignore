@@ -36,3 +36,6 @@ Thumbs.db
 
 # Coverage and test output
 coverage/
+
+# Personal planning notes (not part of the game repo)
+plans/

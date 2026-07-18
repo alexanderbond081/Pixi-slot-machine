@@ -187,6 +187,26 @@ export class Reel extends Container {
 		this.stopFramesCount = 0;
 	}
 
+	/** Snap reel to a stopped frame immediately (error / abort path). */
+	public forceStop(key?: any): void {
+		if (this._state === ReelState.STOPPED) {
+			return;
+		}
+
+		const resolvedKey = key ?? this.stopKey;
+		const symbol = this.symbols.get(resolvedKey);
+
+		if (symbol) {
+			this.stopKey = resolvedKey;
+			this.stopSymbol = symbol;
+			this.adjustSymbolsPos(symbol, this.stopPosition);
+		}
+
+		this.currentSpeed = 0;
+		this._state = ReelState.STOPPED;
+		this.emit('reelStopped');
+	}
+
 	private adjustSymbolsPos(symbol: Sprite, pos: number): void {
 		if (!symbol) return;
 		let startIndex = this.values.indexOf(symbol);

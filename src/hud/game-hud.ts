@@ -4,6 +4,7 @@ import { bindDebouncedTap } from '../components/debounced-tap';
 import { HighlightDecoration } from '../components/highlight-decoration';
 import { UIButton } from '../components/ui-button';
 import { DebugHudPanel } from '../debug/debug-hud-panel';
+import { ErrorModalContent } from './error-modal-content';
 import { HudModal } from './hud-modal';
 import { InfoWindowContentView } from './info-window-content-view';
 import { SoundManager } from '../managers/sound-manager';
@@ -40,6 +41,9 @@ const BET_TEXT_TOP = 7;
 const INFO_WINDOW_WIDTH = 560;
 const INFO_WINDOW_HEIGHT = 420;
 
+const ERROR_WINDOW_WIDTH = 420;
+const ERROR_WINDOW_HEIGHT = 220;
+
 const BALANCE_WINDOW_WIDTH = 320;
 const BALANCE_WINDOW_HEIGHT = 120;
 const BALANCE_WINDOW_PADDING = 20;
@@ -75,6 +79,9 @@ export class GameHUD extends HUD {
 	private balanceLabel!: Text;
 	private modalLayer!: Container;
 	private infoModal!: HudModal;
+	private errorModal!: HudModal;
+	private errorModalContent!: ErrorModalContent;
+	private errorCloseResolver: (() => void) | null = null;
 	private balanceWindow!: Container;
 	private balanceWindowPanel!: NineSliceSprite;
 	private balanceWindowText!: Text;
@@ -100,6 +107,7 @@ export class GameHUD extends HUD {
 		this.addChild(this.debugPanel);
 		this.modalLayer = new Container();
 		await this.addInfoModal();
+		await this.addErrorModal();
 		this.addChild(this.modalLayer);
 	}
 
@@ -142,16 +150,36 @@ export class GameHUD extends HUD {
 	}
 
 	public isModalOpen(): boolean {
-		return this.infoModal.isOpen;
+		return this.infoModal.isOpen || this.errorModal.isOpen;
 	}
 
 	public closeTopModal(): boolean {
+		if (this.errorModal.isOpen) {
+			this.errorModal.close();
+			return true;
+		}
+
 		if (!this.infoModal.isOpen) {
 			return false;
 		}
 
 		this.infoModal.close();
 		return true;
+	}
+
+	/** Show a blocking error dialog; resolves when the user dismisses it (OK / backdrop / Esc). */
+	public showError(message: string): Promise<void> {
+		if (this.infoModal.isOpen) {
+			this.infoModal.close();
+		}
+
+		this.errorModalContent.setMessage(message);
+		this.adjustErrorModal();
+
+		return new Promise((resolve) => {
+			this.errorCloseResolver = resolve;
+			this.errorModal.open();
+		});
 	}
 
 	protected onResize(): void {
@@ -161,6 +189,7 @@ export class GameHUD extends HUD {
 		this.adjustInfoButton();
 		this.adjustInfoPanel();
 		this.adjustInfoModal();
+		this.adjustErrorModal();
 		this.debugPanel.adjustLayout();
 		this.adjustBetControls();
 		this.adjustBalanceBadge();
@@ -298,6 +327,22 @@ export class GameHUD extends HUD {
 		this.infoModal.setContent(new InfoWindowContentView());
 		this.modalLayer.addChild(this.infoModal);
 		this.adjustInfoModal();
+	}
+
+	private async addErrorModal(): Promise<void> {
+		this.errorModal = await HudModal.create({
+			width: ERROR_WINDOW_WIDTH,
+			height: ERROR_WINDOW_HEIGHT,
+		});
+		this.errorModalContent = new ErrorModalContent();
+		this.errorModal.setContent(this.errorModalContent);
+		this.errorModal.on('closed', () => {
+			const resolver = this.errorCloseResolver;
+			this.errorCloseResolver = null;
+			resolver?.();
+		});
+		this.modalLayer.addChild(this.errorModal);
+		this.adjustErrorModal();
 	}
 
 	private async addBalanceWindow(): Promise<void> {
@@ -462,6 +507,20 @@ export class GameHUD extends HUD {
 
 		const width = Math.min(INFO_WINDOW_WIDTH, Scene.viewportWidth - PANEL_MARGIN * 4);
 		this.infoModal.adjustLayout(
+			Scene.viewportWidth,
+			Scene.viewportHeight,
+			this.panelSprite.y / 2,
+			width,
+		);
+	}
+
+	private adjustErrorModal(): void {
+		if (!this.errorModal || !this.panelSprite) {
+			return;
+		}
+
+		const width = Math.min(ERROR_WINDOW_WIDTH, Scene.viewportWidth - PANEL_MARGIN * 4);
+		this.errorModal.adjustLayout(
 			Scene.viewportWidth,
 			Scene.viewportHeight,
 			this.panelSprite.y / 2,

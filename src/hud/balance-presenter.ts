@@ -90,6 +90,13 @@ export class BalancePresenter {
 		this.hud.setDisplayedBalance(this.authoritativeWallet.balance);
 	}
 
+	/** Restore displayed balance after a failed spin (bet was only optimistic). */
+	public onSpinFailed(): void {
+		this.phase = 'idle';
+		this.pendingRevealWallet = null;
+		this.hud.animateBalanceTo(this.authoritativeWallet.balance, BET_DEBIT_DURATION_MS);
+	}
+
 	private storeSnapshotIfNewer(wallet: IWallet): boolean {
 		if (wallet.lastTransactionIndex < this.lastAppliedTransactionIndex) {
 			return false;
